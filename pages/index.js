@@ -59,7 +59,7 @@ export default function App() {
     if (!authed) return
     setLoading(true)
     try {
-      const [wl, wd] = await Promise.all([api('GET', '/auth/watchlist'), api('GET', '/auth/watched')])
+      const [wl, wd] = await Promise.all([api('GET', '/auth/watchlist'), api('GET', '/auth/watchlist/watched')])
       setWatchlist(wl)
       setWatched(wd)
     } catch {}
@@ -146,7 +146,7 @@ export default function App() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
     const item = watchlist[watchIdx]
     try {
-      await api('POST', '/auth/watched', { itemId: item.id, rating: currentRating, comment })
+      await api('POST', '/auth/watchlist/watched', { itemId: item.id, rating: currentRating, comment })
       showToast('✓ Enregistré !')
       loadData()
     } catch (e) { showToast('Erreur: ' + e.message) }
