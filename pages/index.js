@@ -48,6 +48,9 @@ export default function App() {
   const [toast, setToast] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
 
+  const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
+  const [editingId, setEditingId] = useState(null)
+
   // Restore session
   useEffect(() => {
     const user = getUser()
@@ -141,6 +144,46 @@ export default function App() {
     try { await api('PUT', `/auth/watchlist/${id}`, { dir }); loadData() } catch { }
   }
 
+  function startEdit(item) {
+    setEditingId(item.id)
+    setAddTitle(item.title)
+    setAddType(item.type)
+    setAddPoster(item.poster || '')
+    setAddYear(item.year || '')
+    setAddMsg('')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setAddTitle('')
+    setAddType('film')
+    setAddPoster('')
+    setAddYear('')
+    setAddMsg('')
+  }
+
+  async function saveEdit() {
+    if (!addTitle.trim()) {
+      setAddMsg('error:Entrez un titre.')
+      return
+    }
+
+    try {
+      await api('PUT', `/auth/watchlist/${editingId}`, {
+        title: addTitle,
+        type: addType,
+        poster: addPoster,
+        year: addYear,
+      })
+
+      setAddMsg('ok:Modifié !')
+      cancelEdit()
+      loadData()
+    } catch (e) {
+      setAddMsg('error:' + e.message)
+    }
+  }
+
   // ─── REGARDER ───────────────────────────────────────────
   async function markWatched() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
@@ -161,6 +204,18 @@ export default function App() {
   function goWatch(id) {
     const idx = watchlist.findIndex(w => w.id === id)
     if (idx >= 0) { setWatchIdx(idx); setPage('regarder') }
+  }
+
+  async function deleteReview(id) {
+    if (!confirm('Supprimer cet avis ?')) return
+
+    try {
+      await api('DELETE', '/auth/watchlist/watched', { id })
+      showToast('Avis supprimé.')
+      loadData()
+    } catch (e) {
+      showToast('Erreur: ' + e.message)
+    }
   }
 
   // ─── DERIVED ────────────────────────────────────────────
@@ -482,6 +537,17 @@ export default function App() {
                                 {entry.pseudo}
                               </span>
                             </div>
+
+                            {(entry.user_id === currentUser?.id || isAdmin) && (
+                              <button
+                                className="btn-del"
+                                onClick={() => deleteReview(entry.id)}
+                                style={{ marginTop: '8px' }}
+                              >
+                                Supprimer l'avis
+                              </button>
+                            )}
+
                           </div>
                         )
                       })}
@@ -513,7 +579,15 @@ export default function App() {
               <div className="admin-form-group"><label>URL de l'affiche (optionnel)</label><input className="admin-input" value={addPoster} onChange={e => setAddPoster(e.target.value)} placeholder="https://image.tmdb.org/…" /></div>
               {addPoster && <img src={addPoster} style={{ width: '70px', aspectRatio: '2/3', borderRadius: '6px', objectFit: 'cover', marginBottom: '12px', border: '1px solid var(--border)' }} onError={e => e.target.style.display = 'none'} alt="preview" />}
               <div className="admin-form-group"><label>Année (optionnel)</label><input className="admin-input" value={addYear} onChange={e => setAddYear(e.target.value)} placeholder="2019" maxLength={4} /></div>
-              <button className="btn-add" onClick={addItem}>+ Ajouter à la liste</button>
+              <button className="btn-add" onClick={editingId ? saveEdit : addItem}>
+                {editingId ? '✓ Enregistrer les modifications' : '+ Ajouter à la liste'}
+              </button>
+
+              {editingId && (
+                <button className="btn-logout" onClick={cancelEdit} style={{ width: '100%', marginTop: '8px' }}>
+                  Annuler
+                </button>
+              )}
               {addMsg && <div style={{ marginTop: '10px', fontSize: '13px', textAlign: 'center', color: addMsg.startsWith('ok:') ? 'var(--green)' : 'var(--red)' }}>{addMsg.slice(3)}</div>}
             </div>
             <div className="admin-card">
@@ -529,6 +603,7 @@ export default function App() {
                         <div className="admin-item-title">{item.title}{item.year ? ` (${item.year})` : ''}</div>
                         <div className="admin-item-type">{item.type === 'film' ? 'Film' : 'Série'}</div>
                       </div>
+                      <button className="btn-up" onClick={() => startEdit(item)}>✎</button>
                       <button className="btn-up" onClick={() => moveItem(item.id, -1)} disabled={idx === 0}>▲</button>
                       <button className="btn-down" onClick={() => moveItem(item.id, 1)} disabled={idx === watchlist.length - 1}>▼</button>
                       <button className="btn-del" onClick={() => deleteItem(item.id)}>✕</button>

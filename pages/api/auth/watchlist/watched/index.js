@@ -1,4 +1,4 @@
-import { getWatched, upsertWatched } from '../../../../../lib/db'
+import { getWatched, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -31,6 +31,31 @@ export default async function handler(req, res) {
       }
       await upsertWatched(entry)
       return res.status(200).json({ ok: true, entry })
+    } catch (err) {
+      console.error(err)
+      return res.status(500).json({ error: 'Erreur serveur' })
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    const { id } = req.body
+    if (!id) return res.status(400).json({ error: 'id requis' })
+
+    try {
+      const entries = await getWatched()
+      const entry = entries.find(e => e.id === id)
+
+      if (!entry) return res.status(404).json({ error: 'Avis introuvable' })
+
+      const isOwner = entry.user_id === user.id
+      const isAdmin = user.pseudo === process.env.ADMIN_PSEUDO
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: 'Interdit' })
+      }
+
+      await deleteWatched(id)
+      return res.status(200).json({ ok: true })
     } catch (err) {
       console.error(err)
       return res.status(500).json({ error: 'Erreur serveur' })
