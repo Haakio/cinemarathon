@@ -121,6 +121,13 @@ export default function App() {
 
   function logout() { clearSession(); setAuthed(false); setCurrentUser(null); setWatchlist([]); setWatched([]) }
 
+  const isAdmin = currentUser?.pseudo?.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_PSEUDO || '').toLowerCase()
+
+  async function deleteWatched(entryId) {
+    if (!confirm('Supprimer cette note ?')) return
+    try { await api('DELETE', `/watched/${entryId}`); loadData(); showToast('Note supprimée.') } catch (e) { showToast('Erreur: ' + e.message) }
+  }
+
   // ─── ADMIN ──────────────────────────────────────────────
   async function addItem() {
     if (!addTitle.trim()) { setAddMsg('error:Entrez un titre.'); return }
