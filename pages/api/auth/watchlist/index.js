@@ -8,8 +8,9 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Non autorisé' })
 
   if (req.method === 'GET') {
+    const { roomId = 'marvel' } = req.query
     try {
-      const items = await getWatchlist()
+      const items = await getWatchlist(roomId)
       return res.status(200).json(items)
     } catch (err) {
       console.error(err)
@@ -18,12 +19,13 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { title, type, poster, year } = req.body
+    const { roomId = 'marvel', title, type, poster, year } = req.body
     if (!title || !type) return res.status(400).json({ error: 'Titre et type requis' })
     try {
-      const items = await getWatchlist()
+      const items = await getWatchlist(roomId)
       const item = {
         id: uid(),
+        roomId,
         title: title.trim(),
         type,
         poster: poster || '',

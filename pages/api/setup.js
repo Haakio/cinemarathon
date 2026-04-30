@@ -2,10 +2,10 @@ import { sql } from '@vercel/postgres'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
-  // Simple protection: require a secret query param
   if (req.query.secret !== process.env.SETUP_SECRET) {
     return res.status(403).json({ error: 'Forbidden' })
   }
+
   try {
     await sql`
       CREATE TABLE IF NOT EXISTS users (
@@ -16,8 +16,18 @@ export default async function handler(req, res) {
       )
     `
     await sql`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
+        created_by TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
       CREATE TABLE IF NOT EXISTS watchlist (
         id TEXT PRIMARY KEY,
+        room_id TEXT DEFAULT 'marvel',
         title TEXT NOT NULL,
         type TEXT NOT NULL,
         poster TEXT DEFAULT '',
@@ -30,6 +40,7 @@ export default async function handler(req, res) {
     await sql`
       CREATE TABLE IF NOT EXISTS watched (
         id TEXT PRIMARY KEY,
+        room_id TEXT DEFAULT 'marvel',
         item_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
         pseudo TEXT,
@@ -39,7 +50,17 @@ export default async function handler(req, res) {
         UNIQUE(item_id, user_id)
       )
     `
-    return res.status(200).json({ ok: true, message: 'Tables créées avec succès !' })
+    await sql`
+      INSERT INTO rooms (id, name, slug, created_by, created_at)
+      VALUES ('marvel', 'Marvel', 'marvel', 'setup', NOW())
+      ON CONFLICT (id) DO NOTHING
+    `
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS room_id TEXT DEFAULT 'marvel'`
+    await sql`ALTER TABLE watched ADD COLUMN IF NOT EXISTS room_id TEXT DEFAULT 'marvel'`
+    await sql`UPDATE watchlist SET room_id = 'marvel' WHERE room_id IS NULL`
+    await sql`UPDATE watched SET room_id = 'marvel' WHERE room_id IS NULL`
+
+    return res.status(200).json({ ok: true, message: 'Tables creees avec succes !' })
   } catch (err) {
     console.error(err)
     return res.status(500).json({ error: err.message })

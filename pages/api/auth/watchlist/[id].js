@@ -18,12 +18,12 @@ export default async function handler(req, res) {
 
   // PUT: swap order with neighbor (dir: 1 or -1)
   if (req.method === 'PUT') {
-  const { dir, title, type, poster, year } = req.body
+  const { roomId = 'marvel', dir, title, type, poster, year } = req.body
 
   try {
     // ✏️ MODE MODIFICATION
     if (title || type || poster !== undefined || year !== undefined) {
-      const isAdmin = user.pseudo === process.env.ADMIN_PSEUDO
+      const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
       if (!isAdmin) {
         return res.status(403).json({ error: 'Interdit' })
       }
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     // 🔁 MODE DEPLACEMENT (TON CODE ACTUEL)
-    const items = await getWatchlist()
+    const items = await getWatchlist(roomId)
     const idx = items.findIndex(i => i.id === id)
     if (idx < 0) return res.status(404).json({ error: 'Introuvable' })
 

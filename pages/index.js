@@ -6,6 +6,8 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function getUser() { try { return JSON.parse(localStorage.getItem('cm_user')) } catch { return null } }
 function saveSession(token, user) { localStorage.setItem('cm_token', token); localStorage.setItem('cm_user', JSON.stringify(user)) }
 function clearSession() { localStorage.removeItem('cm_token'); localStorage.removeItem('cm_user') }
+function getRoom() { return typeof window !== 'undefined' ? localStorage.getItem('cm_room') || 'marvel' : 'marvel' }
+function saveRoom(roomId) { localStorage.setItem('cm_room', roomId) }
 
 async function api(method, path, body) {
   const res = await fetch('/api' + path, {
@@ -27,6 +29,10 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false)
 
   const [page, setPage] = useState('liste')
+  const [rooms, setRooms] = useState([])
+  const [currentRoomId, setCurrentRoomId] = useState('marvel')
+  const [newRoomName, setNewRoomName] = useState('')
+  const [roomMsg, setRoomMsg] = useState('')
   const [watchlist, setWatchlist] = useState([])
   const [watched, setWatched] = useState([])
   const [loading, setLoading] = useState(false)
@@ -56,19 +62,34 @@ export default function App() {
     const user = getUser()
     const token = getToken()
     if (user && token) { setCurrentUser(user); setAuthed(true) }
+    setCurrentRoomId(getRoom())
   }, [])
 
-  const loadData = useCallback(async () => {
+  const loadRooms = useCallback(async () => {
     if (!authed) return
+    try {
+      const data = await api('GET', '/auth/rooms')
+      setRooms(data)
+      if (data.length && !data.some(room => room.id === currentRoomId)) {
+        setCurrentRoomId(data[0].id)
+        saveRoom(data[0].id)
+      }
+    } catch { }
+  }, [authed, currentRoomId])
+
+  const loadData = useCallback(async () => {
+    if (!authed || !currentRoomId) return
     setLoading(true)
     try {
-      const [wl, wd] = await Promise.all([api('GET', '/auth/watchlist'), api('GET', '/auth/watchlist/watched')])
+      const roomQuery = `roomId=${encodeURIComponent(currentRoomId)}`
+      const [wl, wd] = await Promise.all([api('GET', `/auth/watchlist?${roomQuery}`), api('GET', `/auth/watchlist/watched?${roomQuery}`)])
       setWatchlist(wl)
       setWatched(wd)
     } catch { }
     setLoading(false)
-  }, [authed])
+  }, [authed, currentRoomId])
 
+  useEffect(() => { if (authed) loadRooms() }, [authed, loadRooms])
   useEffect(() => { if (authed) loadData() }, [authed, loadData])
 
   // Reload watched/watchlist when switching pages
@@ -87,6 +108,13 @@ export default function App() {
   function showToast(msg) {
     setToast(msg); setToastVisible(true)
     setTimeout(() => setToastVisible(false), 2200)
+  }
+
+  function selectRoom(roomId) {
+    setCurrentRoomId(roomId)
+    saveRoom(roomId)
+    setWatchIdx(0)
+    cancelEdit()
   }
 
   // ─── AUTH ───────────────────────────────────────────────
@@ -128,7 +156,7 @@ export default function App() {
   async function addItem() {
     if (!addTitle.trim()) { setAddMsg('error:Entrez un titre.'); return }
     try {
-      await api('POST', '/auth/watchlist', { title: addTitle, type: addType, poster: addPoster, year: addYear })
+      await api('POST', '/auth/watchlist', { roomId: currentRoomId, title: addTitle, type: addType, poster: addPoster, year: addYear })
       setAddTitle(''); setAddPoster(''); setAddYear(''); setAddMsg('ok:Ajouté !')
       setTimeout(() => setAddMsg(''), 2500)
       loadData()
@@ -141,7 +169,7 @@ export default function App() {
   }
 
   async function moveItem(id, dir) {
-    try { await api('PUT', `/auth/watchlist/${id}`, { dir }); loadData() } catch { }
+    try { await api('PUT', `/auth/watchlist/${id}`, { roomId: currentRoomId, dir }); loadData() } catch { }
   }
 
   function startEdit(item) {
@@ -170,6 +198,7 @@ export default function App() {
 
     try {
       await api('PUT', `/auth/watchlist/${editingId}`, {
+        roomId: currentRoomId,
         title: addTitle,
         type: addType,
         poster: addPoster,
@@ -184,12 +213,30 @@ export default function App() {
     }
   }
 
+  async function createNewRoom() {
+    if (!newRoomName.trim()) {
+      setRoomMsg('Entrez un nom de room.')
+      return
+    }
+
+    try {
+      const room = await api('POST', '/auth/rooms', { name: newRoomName })
+      setRooms(prev => [...prev, room])
+      setNewRoomName('')
+      setRoomMsg('')
+      selectRoom(room.id)
+      showToast('Room creee.')
+    } catch (e) {
+      setRoomMsg(e.message)
+    }
+  }
+
   // ─── REGARDER ───────────────────────────────────────────
   async function markWatched() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
     const item = watchlist[watchIdx]
     try {
-      await api('POST', '/auth/watchlist/watched', { itemId: item.id, rating: currentRating, comment })
+      await api('POST', '/auth/watchlist/watched', { roomId: currentRoomId, itemId: item.id, rating: currentRating, comment })
       showToast('✓ Enregistré !')
       loadData()
     } catch (e) { showToast('Erreur: ' + e.message) }
@@ -246,6 +293,7 @@ export default function App() {
   const currentItem = watchlist[watchIdx] || null
   const myWatchEntry = currentItem ? watched.find(w => w.item_id === currentItem.id && w.user_id === currentUser?.id) : null
   const anySeen = currentItem ? seenItemIds.includes(currentItem.id) : false
+  const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
 
   // ──────────────────────────────────────────────────────────
   if (!authed) return (
@@ -303,6 +351,22 @@ export default function App() {
         </div>
       </div>
 
+      {/* ROOMS */}
+      <div className="room-bar">
+        <div className="room-list">
+          {(rooms.length ? rooms : [{ id: 'marvel', name: 'Marvel' }]).map(room => (
+            <button key={room.id} className={`room-btn ${currentRoomId === room.id ? 'active' : ''}`} onClick={() => selectRoom(room.id)}>
+              {room.name}
+            </button>
+          ))}
+        </div>
+        <div className="room-create">
+          <input value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder="Nouvelle room" onKeyDown={e => e.key === 'Enter' && createNewRoom()} />
+          <button onClick={createNewRoom}>Créer</button>
+        </div>
+        {roomMsg && <div className="room-msg">{roomMsg}</div>}
+      </div>
+
       {/* NAV */}
       <nav className="nav">
         {[['liste', '🎬 Liste'], ['regarder', '▶ Regarder'], ['vu', '✓ Déjà vu'], ['admin', '⚙ Admin']].map(([id, label]) => (
@@ -314,6 +378,7 @@ export default function App() {
       {page === 'liste' && (
         <div className="page">
           <h1 className="page-title">Liste du marathon</h1>
+          <p className="page-subtitle room-title">Room : {currentRoom.name}</p>
           <p className="page-subtitle">{watchlist.length > 0 ? `${seenItemIds.length} / ${watchlist.length} visionné${seenItemIds.length > 1 ? 's' : ''}` : "Ajoutez des titres depuis l'onglet Admin"}</p>
           <div className="stats-row">
             {[['Titres', watchlist.length], ['Vus', seenItemIds.length], ['Restants', watchlist.length - seenItemIds.length],
@@ -564,11 +629,11 @@ export default function App() {
       {page === 'admin' && (
         <div className="page">
           <h1 className="page-title">Administration</h1>
-          <p className="page-subtitle">Gérer la liste du marathon</p>
+          <p className="page-subtitle">Gérer la liste de la room {currentRoom.name}</p>
           <div className="admin-grid">
             <div className="admin-card">
-              <h2>Ajouter un titre</h2>
-              <div className="admin-form-group"><label>Titre *</label><input className="admin-input" value={addTitle} onChange={e => setAddTitle(e.target.value)} placeholder="Ex: Avengers: Endgame" onKeyDown={e => e.key === 'Enter' && addItem()} /></div>
+              <h2>{editingId ? 'Modifier le titre' : 'Ajouter un titre'}</h2>
+              <div className="admin-form-group"><label>Titre *</label><input className="admin-input" value={addTitle} onChange={e => setAddTitle(e.target.value)} placeholder="Ex: Avengers: Endgame" onKeyDown={e => e.key === 'Enter' && (editingId ? saveEdit() : addItem())} /></div>
               <div className="admin-form-group">
                 <label>Type *</label>
                 <select className="admin-select" value={addType} onChange={e => setAddType(e.target.value)}>
@@ -660,6 +725,16 @@ const globalCss = `
           .user-name {font-size:14px; font-weight:500; }
           .btn-logout {background:none; border:1px solid var(--border); color:var(--text2); padding:6px 14px; border-radius:8px; font-size:13px; cursor:pointer; transition:all 0.2s; }
           .btn-logout:hover {border-color:var(--red); color:var(--red); }
+
+          .room-bar {display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 32px; border-bottom:1px solid var(--border); background:var(--bg); flex-wrap:wrap; }
+          .room-list {display:flex; gap:8px; flex-wrap:wrap; }
+          .room-btn {padding:8px 14px; border:1px solid var(--border); background:var(--bg2); color:var(--text2); border-radius:8px; font-size:13px; cursor:pointer; transition:all 0.2s; }
+          .room-btn.active, .room-btn:hover {background:var(--gold); border-color:var(--gold); color:#000; font-weight:700; }
+          .room-create {display:flex; gap:8px; align-items:center; }
+          .room-create input {width:160px; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 10px; font-size:13px; outline:none; }
+          .room-create button {background:var(--bg2); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+          .room-msg {width:100%; color:var(--red); font-size:12px; }
+          .room-title {margin-bottom:8px; color:var(--gold); }
 
           .nav {display:flex; padding:0 32px; border-bottom:1px solid var(--border); background:var(--bg2); }
           .nav-btn {padding:16px 24px; background:none; border:none; border-bottom:2px solid transparent; color:var(--text2); font-size:12px; font-weight:500; cursor:pointer; letter-spacing:2px; transition:all 0.2s; text-transform:uppercase; }
@@ -788,6 +863,9 @@ const globalCss = `
           @media(max-width:700px) {
     .admin-grid {grid-template-columns:1fr; }
           .topbar {padding:12px 16px; }
+          .room-bar {padding:12px 16px; align-items:stretch; }
+          .room-create {width:100%; }
+          .room-create input {flex:1; width:auto; }
           .nav {padding:0 8px; }
           .nav-btn {padding:14px 10px; font-size:10px; letter-spacing:1px; }
           .page {padding:20px 16px; }
