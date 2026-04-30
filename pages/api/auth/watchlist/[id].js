@@ -1,5 +1,5 @@
-import { deleteWatchlistItem, getWatchlist, updateWatchlistOrder } from '../../../lib/db'
-import { requireAuth } from '../../../lib/auth'
+import { deleteWatchlistItem, getWatchlist, updateWatchlistOrder } from '../../../../lib/db'
+import { requireAuth } from '../../../../lib/auth'
 
 export default async function handler(req, res) {
   const user = requireAuth(req)

@@ -1,5 +1,5 @@
-import { getWatchlist, insertWatchlistItem } from '../../../lib/db'
-import { requireAuth } from '../../../lib/auth'
+import { getWatchlist, insertWatchlistItem } from '../../../../lib/db'
+import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
 
