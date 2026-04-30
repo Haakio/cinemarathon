@@ -1,6 +1,8 @@
 import { deleteWatchlistItem, getWatchlist, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
+function isValidWatchUrl(url) { return !url || /^https?:\/\//i.test(url) }
+
 export default async function handler(req, res) {
   const user = requireAuth(req)
   if (!user) return res.status(401).json({ error: 'Non autorisé' })
@@ -18,11 +20,11 @@ export default async function handler(req, res) {
 
   // PUT: swap order with neighbor (dir: 1 or -1)
   if (req.method === 'PUT') {
-  const { roomId = 'marvel', dir, title, type, poster, year } = req.body
+  const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl } = req.body
 
   try {
     // ✏️ MODE MODIFICATION
-    if (title || type || poster !== undefined || year !== undefined) {
+    if (title || type || poster !== undefined || year !== undefined || platform !== undefined || watchUrl !== undefined) {
       const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
       if (!isAdmin) {
         return res.status(403).json({ error: 'Interdit' })
@@ -31,12 +33,17 @@ export default async function handler(req, res) {
       if (!title || !type) {
         return res.status(400).json({ error: 'Titre et type requis' })
       }
+      if (!isValidWatchUrl(watchUrl)) {
+        return res.status(400).json({ error: 'Lien de visionnage invalide' })
+      }
 
       await updateWatchlistItem(id, {
         title: title.trim(),
         type,
         poster: poster || '',
-        year: year || ''
+        year: year || '',
+        platform: platform?.trim() || '',
+        watchUrl: watchUrl?.trim() || ''
       })
 
       return res.status(200).json({ ok: true })

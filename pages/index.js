@@ -49,6 +49,8 @@ export default function App() {
   const [addType, setAddType] = useState('film')
   const [addPoster, setAddPoster] = useState('')
   const [addYear, setAddYear] = useState('')
+  const [addPlatform, setAddPlatform] = useState('')
+  const [addWatchUrl, setAddWatchUrl] = useState('')
   const [addMsg, setAddMsg] = useState('')
 
   const [toast, setToast] = useState('')
@@ -156,8 +158,8 @@ export default function App() {
   async function addItem() {
     if (!addTitle.trim()) { setAddMsg('error:Entrez un titre.'); return }
     try {
-      await api('POST', '/auth/watchlist', { roomId: currentRoomId, title: addTitle, type: addType, poster: addPoster, year: addYear })
-      setAddTitle(''); setAddPoster(''); setAddYear(''); setAddMsg('ok:Ajouté !')
+      await api('POST', '/auth/watchlist', { roomId: currentRoomId, title: addTitle, type: addType, poster: addPoster, year: addYear, platform: addPlatform, watchUrl: addWatchUrl })
+      setAddTitle(''); setAddPoster(''); setAddYear(''); setAddPlatform(''); setAddWatchUrl(''); setAddMsg('ok:Ajouté !')
       setTimeout(() => setAddMsg(''), 2500)
       loadData()
     } catch (e) { setAddMsg('error:' + e.message) }
@@ -178,6 +180,8 @@ export default function App() {
     setAddType(item.type)
     setAddPoster(item.poster || '')
     setAddYear(item.year || '')
+    setAddPlatform(item.platform || '')
+    setAddWatchUrl(item.watch_url || '')
     setAddMsg('')
   }
 
@@ -187,6 +191,8 @@ export default function App() {
     setAddType('film')
     setAddPoster('')
     setAddYear('')
+    setAddPlatform('')
+    setAddWatchUrl('')
     setAddMsg('')
   }
 
@@ -203,6 +209,8 @@ export default function App() {
         type: addType,
         poster: addPoster,
         year: addYear,
+        platform: addPlatform,
+        watchUrl: addWatchUrl,
       })
 
       setAddMsg('ok:Modifié !')
@@ -469,6 +477,12 @@ export default function App() {
                   <span className="watch-counter">{watchIdx + 1} / {watchlist.length}</span>
                 </div>
 
+                {currentItem?.watch_url && (
+                  <a className="watch-link" href={currentItem.watch_url} target="_blank" rel="noopener noreferrer">
+                    Regarder{currentItem.platform ? ` sur ${currentItem.platform}` : ''}
+                  </a>
+                )}
+
                 {/* RATING */}
                 <div className="rating-section">
                   <div className="rating-label">Votre note</div>
@@ -644,6 +658,8 @@ export default function App() {
               <div className="admin-form-group"><label>URL de l'affiche (optionnel)</label><input className="admin-input" value={addPoster} onChange={e => setAddPoster(e.target.value)} placeholder="https://image.tmdb.org/…" /></div>
               {addPoster && <img src={addPoster} style={{ width: '70px', aspectRatio: '2/3', borderRadius: '6px', objectFit: 'cover', marginBottom: '12px', border: '1px solid var(--border)' }} onError={e => e.target.style.display = 'none'} alt="preview" />}
               <div className="admin-form-group"><label>Année (optionnel)</label><input className="admin-input" value={addYear} onChange={e => setAddYear(e.target.value)} placeholder="2019" maxLength={4} /></div>
+              <div className="admin-form-group"><label>Plateforme (optionnel)</label><input className="admin-input" value={addPlatform} onChange={e => setAddPlatform(e.target.value)} placeholder="Disney+" /></div>
+              <div className="admin-form-group"><label>Lien de visionnage (optionnel)</label><input className="admin-input" value={addWatchUrl} onChange={e => setAddWatchUrl(e.target.value)} placeholder="https://www.disneyplus.com/..." /></div>
               <button className="btn-add" onClick={editingId ? saveEdit : addItem}>
                 {editingId ? '✓ Enregistrer les modifications' : '+ Ajouter à la liste'}
               </button>
@@ -790,6 +806,8 @@ const globalCss = `
 
           .watch-counter-row {text-align:center; margin-bottom:16px; }
           .watch-counter {font-size:13px; color:var(--text2); }
+          .watch-link {display:block; width:100%; text-align:center; margin-bottom:12px; padding:12px 14px; background:var(--gold); color:#000; border-radius:10px; text-decoration:none; font-size:14px; font-weight:800; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; }
+          .watch-link:hover {background:var(--gold-light); transform:translateY(-1px); }
 
           .rating-section {background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:12px; }
           .rating-label {font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:2px; margin-bottom:10px; }

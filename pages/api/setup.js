@@ -32,6 +32,8 @@ export default async function handler(req, res) {
         type TEXT NOT NULL,
         poster TEXT DEFAULT '',
         year TEXT DEFAULT '',
+        platform TEXT DEFAULT '',
+        watch_url TEXT DEFAULT '',
         "order" INTEGER NOT NULL,
         added_by TEXT,
         added_at TIMESTAMPTZ DEFAULT NOW()
@@ -56,6 +58,8 @@ export default async function handler(req, res) {
       ON CONFLICT (id) DO NOTHING
     `
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS room_id TEXT DEFAULT 'marvel'`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS platform TEXT DEFAULT ''`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS watch_url TEXT DEFAULT ''`
     await sql`ALTER TABLE watched ADD COLUMN IF NOT EXISTS room_id TEXT DEFAULT 'marvel'`
     await sql`UPDATE watchlist SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE watched SET room_id = 'marvel' WHERE room_id IS NULL`

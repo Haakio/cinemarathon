@@ -2,6 +2,7 @@ import { getWatchlist, insertWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
+function isValidWatchUrl(url) { return !url || /^https?:\/\//i.test(url) }
 
 export default async function handler(req, res) {
   const user = requireAuth(req)
@@ -19,8 +20,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { roomId = 'marvel', title, type, poster, year } = req.body
+    const { roomId = 'marvel', title, type, poster, year, platform, watchUrl } = req.body
     if (!title || !type) return res.status(400).json({ error: 'Titre et type requis' })
+    if (!isValidWatchUrl(watchUrl)) return res.status(400).json({ error: 'Lien de visionnage invalide' })
     try {
       const items = await getWatchlist(roomId)
       const item = {
@@ -30,6 +32,8 @@ export default async function handler(req, res) {
         type,
         poster: poster || '',
         year: year || '',
+        platform: platform?.trim() || '',
+        watchUrl: watchUrl?.trim() || '',
         order: items.length + 1,
         addedBy: user.id,
       }
