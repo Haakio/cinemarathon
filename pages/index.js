@@ -68,6 +68,7 @@ export default function App() {
   const [feedbackType, setFeedbackType] = useState('Idée')
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -180,6 +181,10 @@ export default function App() {
     cancelEdit()
   }
 
+  function toggleSettings() {
+    setSettingsOpen(open => !open)
+  }
+
   function setChatPreference(enabled) {
     if (!currentUser?.id) return
     saveChatPref(currentUser.id, enabled ? 'enabled' : 'disabled')
@@ -272,6 +277,7 @@ export default function App() {
     setChatEnabled(false)
     setChatMessages([])
     setChatTypingUsers([])
+    setSettingsOpen(false)
   }
 
   // ─── ADMIN ──────────────────────────────────────────────
@@ -482,10 +488,25 @@ export default function App() {
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-logo">CINÉMARATHON</div>
-        <div className="topbar-user">
-          <div className="avatar">{currentUser?.pseudo?.[0]?.toUpperCase()}</div>
-          <span className="user-name">{currentUser?.pseudo}</span>
-          <button className="btn-logout" onClick={logout}>Quitter</button>
+        <div className="topbar-user-wrap">
+          <button className={`user-menu-btn ${settingsOpen ? 'active' : ''}`} onClick={toggleSettings}>
+            <div className="avatar">{currentUser?.pseudo?.[0]?.toUpperCase()}</div>
+            <span className="user-name">{currentUser?.pseudo}</span>
+            <span className="user-chevron">⌄</span>
+          </button>
+          {settingsOpen && (
+            <div className="settings-menu">
+              <div className="settings-title">Paramètres</div>
+              <label className="settings-row">
+                <span>
+                  <strong>Chat</strong>
+                  <small>Bulle de discussion par room</small>
+                </span>
+                <input type="checkbox" checked={chatEnabled} onChange={e => setChatPreference(e.target.checked)} />
+              </label>
+              <button className="settings-logout" onClick={logout}>Quitter</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -849,10 +870,6 @@ export default function App() {
                 <div className="chat-room">{currentRoom.name}</div>
               </div>
               <div className="chat-head-actions">
-                <label className="chat-toggle">
-                  <input type="checkbox" checked={chatEnabled} onChange={e => setChatPreference(e.target.checked)} />
-                  <span>Actif</span>
-                </label>
                 <button onClick={() => setChatOpen(false)}>×</button>
               </div>
             </div>
@@ -964,9 +981,22 @@ const globalCss = `
           /* APP */
           .topbar {display:flex; align-items:center; justify-content:space-between; padding:16px 32px; border-bottom:1px solid var(--border); background:rgba(10,10,10,0.95); backdrop-filter:blur(10px); position:sticky; top:0; z-index:100; }
           .topbar-logo {font-family:'Playfair Display',serif; font-size:22px; font-weight:900; background:linear-gradient(135deg,var(--gold-light),var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:2px; }
-          .topbar-user {display:flex; align-items:center; gap:12px; }
+          .topbar-user-wrap {position:relative; }
+          .user-menu-btn {display:flex; align-items:center; gap:10px; background:transparent; border:1px solid transparent; color:var(--text); border-radius:12px; padding:4px 8px 4px 4px; cursor:pointer; transition:all 0.2s; }
+          .user-menu-btn:hover, .user-menu-btn.active {background:var(--bg2); border-color:var(--border); }
           .avatar {width:36px; height:36px; border-radius:50%; background:var(--gold); color:#000; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
           .user-name {font-size:14px; font-weight:500; }
+          .user-chevron {color:var(--text2); font-size:16px; line-height:1; transform:translateY(-1px); transition:transform 0.2s; }
+          .user-menu-btn.active .user-chevron {transform:rotate(180deg) translateY(1px); }
+          .settings-menu {position:absolute; right:0; top:calc(100% + 10px); width:260px; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:0 18px 55px rgba(0,0,0,0.6); z-index:200; }
+          .settings-title {font-family:'Playfair Display',serif; color:var(--gold); font-size:18px; font-weight:800; margin-bottom:10px; }
+          .settings-row {display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; cursor:pointer; }
+          .settings-row span {display:flex; flex-direction:column; gap:2px; }
+          .settings-row strong {font-size:13px; color:var(--text); }
+          .settings-row small {font-size:11px; color:var(--text2); line-height:1.25; }
+          .settings-row input {width:18px; height:18px; accent-color:var(--gold); flex-shrink:0; }
+          .settings-logout {width:100%; margin-top:10px; background:transparent; border:1px solid var(--border); color:var(--text2); padding:10px; border-radius:10px; font-size:13px; cursor:pointer; transition:all 0.2s; }
+          .settings-logout:hover {border-color:var(--red); color:var(--red); }
           .btn-logout {background:none; border:1px solid var(--border); color:var(--text2); padding:6px 14px; border-radius:8px; font-size:13px; cursor:pointer; transition:all 0.2s; }
           .btn-logout:hover {border-color:var(--red); color:var(--red); }
 
@@ -1106,8 +1136,6 @@ const globalCss = `
           .chat-room {font-size:12px; color:var(--text2); margin-top:2px; }
           .chat-head-actions {display:flex; align-items:center; gap:8px; }
           .chat-head-actions button {width:28px; height:28px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; font-size:20px; line-height:1; }
-          .chat-toggle {display:flex; align-items:center; gap:6px; color:var(--text2); font-size:12px; cursor:pointer; }
-          .chat-toggle input {accent-color:var(--gold); }
           .chat-messages {flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
           .chat-empty {margin:auto; color:var(--text2); font-size:13px; text-align:center; }
           .chat-message {max-width:88%; align-self:flex-start; }
@@ -1171,6 +1199,8 @@ const globalCss = `
           @media(max-width:700px) {
     .admin-grid {grid-template-columns:1fr; }
           .topbar {padding:12px 16px; }
+          .settings-menu {right:0; width:240px; }
+          .user-name {display:none; }
           .room-bar {padding:12px 16px; align-items:stretch; }
           .room-create {width:100%; }
           .room-create input {flex:1; width:auto; }
