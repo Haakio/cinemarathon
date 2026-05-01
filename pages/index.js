@@ -506,7 +506,6 @@ export default function App() {
       <div className="topbar">
         <div className="topbar-logo">CINÉMARATHON</div>
         <div className="topbar-user">
-          <button className="btn-logout" onClick={logout}>Quitter</button>
           <div className="topbar-user-wrap">
             <button className={`user-menu-btn ${settingsOpen ? 'active' : ''}`} onClick={toggleSettings}>
               <div className="avatar">{currentUser?.pseudo?.[0]?.toUpperCase()}</div>
@@ -526,6 +525,7 @@ export default function App() {
               </div>
             )}
           </div>
+          <button className="btn-logout" onClick={logout}>Quitter</button>
         </div>
       </div>
 
