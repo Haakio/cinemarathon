@@ -1,5 +1,6 @@
 import Head from 'next/head'
 import { useState, useEffect, useCallback } from 'react'
+import { patchnotes } from '../lib/patchnotes'
 
 // ─── API helpers ───────────────────────────────────────────
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('cm_token') : null }
@@ -10,6 +11,8 @@ function getRoom() { return typeof window !== 'undefined' ? localStorage.getItem
 function saveRoom(roomId) { localStorage.setItem('cm_room', roomId) }
 function getChatPref(userId) { return typeof window !== 'undefined' ? localStorage.getItem(`cm_chat_pref_${userId}`) : null }
 function saveChatPref(userId, value) { localStorage.setItem(`cm_chat_pref_${userId}`, value) }
+function getPatchPref(userId) { return typeof window !== 'undefined' ? localStorage.getItem(`cm_patchnotes_${userId}`) : null }
+function savePatchPref(userId) { localStorage.setItem(`cm_patchnotes_${userId}`, patchnotes.version) }
 
 async function api(method, path, body) {
   const res = await fetch('/api' + path, {
@@ -69,6 +72,7 @@ export default function App() {
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [patchnotesOpen, setPatchnotesOpen] = useState(false)
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -119,6 +123,13 @@ export default function App() {
       return
     }
     setChatEnabled(pref === 'enabled')
+  }, [authed, currentUser])
+
+  useEffect(() => {
+    if (!authed || !currentUser?.id) return
+    if (getPatchPref(currentUser.id) !== patchnotes.version) {
+      setPatchnotesOpen(true)
+    }
   }, [authed, currentUser])
 
   const loadChat = useCallback(async () => {
@@ -183,6 +194,11 @@ export default function App() {
 
   function toggleSettings() {
     setSettingsOpen(open => !open)
+  }
+
+  function closePatchnotes() {
+    if (currentUser?.id) savePatchPref(currentUser.id)
+    setPatchnotesOpen(false)
   }
 
   function setChatPreference(enabled) {
@@ -278,6 +294,7 @@ export default function App() {
     setChatMessages([])
     setChatTypingUsers([])
     setSettingsOpen(false)
+    setPatchnotesOpen(false)
   }
 
   // ─── ADMIN ──────────────────────────────────────────────
@@ -488,25 +505,27 @@ export default function App() {
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-logo">CINÉMARATHON</div>
-        <div className="topbar-user-wrap">
-          <button className={`user-menu-btn ${settingsOpen ? 'active' : ''}`} onClick={toggleSettings}>
-            <div className="avatar">{currentUser?.pseudo?.[0]?.toUpperCase()}</div>
-            <span className="user-name">{currentUser?.pseudo}</span>
-            <span className="user-chevron">⌄</span>
-          </button>
-          {settingsOpen && (
-            <div className="settings-menu">
-              <div className="settings-title">Paramètres</div>
-              <label className="settings-row">
-                <span>
-                  <strong>Chat</strong>
-                  <small>Bulle de discussion par room</small>
-                </span>
-                <input type="checkbox" checked={chatEnabled} onChange={e => setChatPreference(e.target.checked)} />
-              </label>
-              <button className="settings-logout" onClick={logout}>Quitter</button>
-            </div>
-          )}
+        <div className="topbar-user">
+          <button className="btn-logout" onClick={logout}>Quitter</button>
+          <div className="topbar-user-wrap">
+            <button className={`user-menu-btn ${settingsOpen ? 'active' : ''}`} onClick={toggleSettings}>
+              <div className="avatar">{currentUser?.pseudo?.[0]?.toUpperCase()}</div>
+              <span className="user-name">{currentUser?.pseudo}</span>
+              <span className="user-chevron">⌄</span>
+            </button>
+            {settingsOpen && (
+              <div className="settings-menu">
+                <div className="settings-title">Paramètres</div>
+                <label className="settings-row">
+                  <span>
+                    <strong>Chat</strong>
+                    <small>Bulle de discussion par room</small>
+                  </span>
+                  <input type="checkbox" checked={chatEnabled} onChange={e => setChatPreference(e.target.checked)} />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -848,6 +867,20 @@ export default function App() {
         </div>
       )}
 
+      {patchnotesOpen && (
+        <div className="patch-modal">
+          <div className="patch-box">
+            <div className="patch-kicker">Patchnote</div>
+            <h2>{patchnotes.title}</h2>
+            <p>{patchnotes.intro}</p>
+            <ul>
+              {patchnotes.items.map(item => <li key={item}>{item}</li>)}
+            </ul>
+            <button onClick={closePatchnotes}>J’ai vu</button>
+          </div>
+        </div>
+      )}
+
       {chatPromptVisible && (
         <div className="chat-consent">
           <div className="chat-consent-box">
@@ -981,6 +1014,7 @@ const globalCss = `
           /* APP */
           .topbar {display:flex; align-items:center; justify-content:space-between; padding:16px 32px; border-bottom:1px solid var(--border); background:rgba(10,10,10,0.95); backdrop-filter:blur(10px); position:sticky; top:0; z-index:100; }
           .topbar-logo {font-family:'Playfair Display',serif; font-size:22px; font-weight:900; background:linear-gradient(135deg,var(--gold-light),var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:2px; }
+          .topbar-user {display:flex; align-items:center; gap:12px; }
           .topbar-user-wrap {position:relative; }
           .user-menu-btn {display:flex; align-items:center; gap:10px; background:transparent; border:1px solid transparent; color:var(--text); border-radius:12px; padding:4px 8px 4px 4px; cursor:pointer; transition:all 0.2s; }
           .user-menu-btn:hover, .user-menu-btn.active {background:var(--bg2); border-color:var(--border); }
@@ -995,8 +1029,6 @@ const globalCss = `
           .settings-row strong {font-size:13px; color:var(--text); }
           .settings-row small {font-size:11px; color:var(--text2); line-height:1.25; }
           .settings-row input {width:18px; height:18px; accent-color:var(--gold); flex-shrink:0; }
-          .settings-logout {width:100%; margin-top:10px; background:transparent; border:1px solid var(--border); color:var(--text2); padding:10px; border-radius:10px; font-size:13px; cursor:pointer; transition:all 0.2s; }
-          .settings-logout:hover {border-color:var(--red); color:var(--red); }
           .btn-logout {background:none; border:1px solid var(--border); color:var(--text2); padding:6px 14px; border-radius:8px; font-size:13px; cursor:pointer; transition:all 0.2s; }
           .btn-logout:hover {border-color:var(--red); color:var(--red); }
 
@@ -1166,6 +1198,16 @@ const globalCss = `
           .chat-consent-primary {background:var(--gold); border:1px solid var(--gold); color:#000; }
           .chat-consent-secondary {background:transparent; border:1px solid var(--border); color:var(--text2); }
 
+          /* PATCHNOTES */
+          .patch-modal {position:fixed; inset:0; z-index:9400; background:rgba(0,0,0,0.68); display:flex; align-items:center; justify-content:center; padding:18px; }
+          .patch-box {width:480px; max-width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:28px; box-shadow:0 24px 80px rgba(0,0,0,0.7); }
+          .patch-kicker {display:inline-flex; color:#000; background:var(--gold); border-radius:999px; padding:5px 10px; font-size:11px; font-weight:900; letter-spacing:1px; text-transform:uppercase; margin-bottom:14px; }
+          .patch-box h2 {font-family:'Playfair Display',serif; color:var(--gold); font-size:28px; margin-bottom:10px; }
+          .patch-box p {color:var(--text2); font-size:14px; line-height:1.55; margin-bottom:16px; }
+          .patch-box ul {display:flex; flex-direction:column; gap:9px; margin:0 0 22px 18px; color:var(--text); font-size:14px; line-height:1.45; }
+          .patch-box li::marker {color:var(--gold); }
+          .patch-box button {width:100%; background:var(--gold); border:1px solid var(--gold); color:#000; border-radius:10px; padding:12px; font-size:13px; font-weight:900; cursor:pointer; }
+
           /* FEEDBACK */
           .feedback-widget {position:fixed; left:22px; bottom:22px; z-index:8900; display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
           .feedback-bubble {min-width:86px; height:46px; border-radius:23px; border:1px solid var(--border); background:var(--bg2); color:var(--gold); font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 12px 35px rgba(0,0,0,0.45); padding:0 18px; }
@@ -1199,6 +1241,7 @@ const globalCss = `
           @media(max-width:700px) {
     .admin-grid {grid-template-columns:1fr; }
           .topbar {padding:12px 16px; }
+          .topbar-user {gap:8px; }
           .settings-menu {right:0; width:240px; }
           .user-name {display:none; }
           .room-bar {padding:12px 16px; align-items:stretch; }
