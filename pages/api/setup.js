@@ -53,6 +53,26 @@ export default async function handler(req, res) {
       )
     `
     await sql`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        pseudo TEXT,
+        message TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
+      CREATE TABLE IF NOT EXISTS chat_typing (
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        pseudo TEXT,
+        is_typing BOOLEAN DEFAULT false,
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (room_id, user_id)
+      )
+    `
+    await sql`
       INSERT INTO rooms (id, name, slug, created_by, created_at)
       VALUES ('marvel', 'Marvel', 'marvel', 'setup', NOW())
       ON CONFLICT (id) DO NOTHING

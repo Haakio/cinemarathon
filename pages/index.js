@@ -8,6 +8,8 @@ function saveSession(token, user) { localStorage.setItem('cm_token', token); loc
 function clearSession() { localStorage.removeItem('cm_token'); localStorage.removeItem('cm_user') }
 function getRoom() { return typeof window !== 'undefined' ? localStorage.getItem('cm_room') || 'marvel' : 'marvel' }
 function saveRoom(roomId) { localStorage.setItem('cm_room', roomId) }
+function getChatPref(userId) { return typeof window !== 'undefined' ? localStorage.getItem(`cm_chat_pref_${userId}`) : null }
+function saveChatPref(userId, value) { localStorage.setItem(`cm_chat_pref_${userId}`, value) }
 
 async function api(method, path, body) {
   const res = await fetch('/api' + path, {
@@ -55,6 +57,12 @@ export default function App() {
 
   const [toast, setToast] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
+  const [chatEnabled, setChatEnabled] = useState(false)
+  const [chatPromptVisible, setChatPromptVisible] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatTypingUsers, setChatTypingUsers] = useState([])
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -94,6 +102,52 @@ export default function App() {
   useEffect(() => { if (authed) loadRooms() }, [authed, loadRooms])
   useEffect(() => { if (authed) loadData() }, [authed, loadData])
 
+  useEffect(() => {
+    if (!authed || !currentUser?.id) return
+    const pref = getChatPref(currentUser.id)
+    if (!pref) {
+      setChatPromptVisible(true)
+      setChatEnabled(false)
+      return
+    }
+    setChatEnabled(pref === 'enabled')
+  }, [authed, currentUser])
+
+  const loadChat = useCallback(async () => {
+    if (!authed || !chatEnabled || !currentRoomId) return
+    const roomQuery = `roomId=${encodeURIComponent(currentRoomId)}`
+    try {
+      const [messages, typing] = await Promise.all([
+        api('GET', `/auth/chat?${roomQuery}`),
+        api('GET', `/auth/chat/typing?${roomQuery}`),
+      ])
+      setChatMessages(messages)
+      setChatTypingUsers(typing)
+    } catch { }
+  }, [authed, chatEnabled, currentRoomId])
+
+  useEffect(() => {
+    if (!chatEnabled) return
+    loadChat()
+    const timer = setInterval(loadChat, chatOpen ? 2500 : 6000)
+    return () => clearInterval(timer)
+  }, [chatEnabled, chatOpen, loadChat])
+
+  useEffect(() => {
+    setChatMessages([])
+    setChatTypingUsers([])
+  }, [currentRoomId])
+
+  useEffect(() => {
+    if (!chatEnabled || !chatOpen || !chatInput.trim() || !currentRoomId) return
+    const roomId = currentRoomId
+    api('POST', '/auth/chat/typing', { roomId, isTyping: true }).catch(() => { })
+    const timer = setTimeout(() => {
+      api('POST', '/auth/chat/typing', { roomId, isTyping: false }).catch(() => { })
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [chatInput, chatEnabled, chatOpen, currentRoomId])
+
   // Reload watched/watchlist when switching pages
   useEffect(() => { if (authed) loadData() }, [page])
 
@@ -117,6 +171,32 @@ export default function App() {
     saveRoom(roomId)
     setWatchIdx(0)
     cancelEdit()
+  }
+
+  function setChatPreference(enabled) {
+    if (!currentUser?.id) return
+    saveChatPref(currentUser.id, enabled ? 'enabled' : 'disabled')
+    setChatEnabled(enabled)
+    setChatPromptVisible(false)
+    setChatOpen(enabled)
+    if (!enabled) {
+      setChatMessages([])
+      setChatTypingUsers([])
+      setChatOpen(false)
+    }
+  }
+
+  async function sendChatMessage() {
+    const message = chatInput.trim()
+    if (!message) return
+    try {
+      await api('POST', '/auth/chat', { roomId: currentRoomId, message })
+      await api('POST', '/auth/chat/typing', { roomId: currentRoomId, isTyping: false })
+      setChatInput('')
+      loadChat()
+    } catch (e) {
+      showToast('Erreur chat: ' + e.message)
+    }
   }
 
   // ─── AUTH ───────────────────────────────────────────────
@@ -152,7 +232,17 @@ export default function App() {
     setAuthLoading(false)
   }
 
-  function logout() { clearSession(); setAuthed(false); setCurrentUser(null); setWatchlist([]); setWatched([]) }
+  function logout() {
+    clearSession()
+    setAuthed(false)
+    setCurrentUser(null)
+    setWatchlist([])
+    setWatched([])
+    setChatOpen(false)
+    setChatEnabled(false)
+    setChatMessages([])
+    setChatTypingUsers([])
+  }
 
   // ─── ADMIN ──────────────────────────────────────────────
   async function addItem() {
@@ -697,6 +787,73 @@ export default function App() {
         </div>
       )}
 
+      {chatPromptVisible && (
+        <div className="chat-consent">
+          <div className="chat-consent-box">
+            <h2>Nouveau : chat de room</h2>
+            <p>Tu peux activer une bulle de discussion par room pour parler avec les autres membres pendant le marathon.</p>
+            <div className="chat-consent-actions">
+              <button className="chat-consent-primary" onClick={() => setChatPreference(true)}>Activer</button>
+              <button className="chat-consent-secondary" onClick={() => setChatPreference(false)}>Pas maintenant</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`chat-widget ${chatOpen ? 'open' : ''}`}>
+        {chatOpen && (
+          <div className="chat-panel">
+            <div className="chat-head">
+              <div>
+                <div className="chat-title">Chat</div>
+                <div className="chat-room">{currentRoom.name}</div>
+              </div>
+              <div className="chat-head-actions">
+                <label className="chat-toggle">
+                  <input type="checkbox" checked={chatEnabled} onChange={e => setChatPreference(e.target.checked)} />
+                  <span>Actif</span>
+                </label>
+                <button onClick={() => setChatOpen(false)}>×</button>
+              </div>
+            </div>
+
+            {chatEnabled ? (
+              <>
+                <div className="chat-messages">
+                  {chatMessages.length === 0 ? (
+                    <div className="chat-empty">Aucun message dans cette room.</div>
+                  ) : chatMessages.map(msg => (
+                    <div key={msg.id} className={`chat-message ${msg.user_id === currentUser?.id ? 'mine' : ''}`}>
+                      <div className="chat-meta">
+                        <span>{msg.pseudo || 'Membre'}</span>
+                        <small>{new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small>
+                      </div>
+                      <div className="chat-bubble-text">{msg.message}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className={`chat-typing ${chatTypingUsers.length ? 'show' : ''}`}>
+                  {chatTypingUsers.length ? `${chatTypingUsers[0].pseudo} écrit` : ''}
+                  <span>.</span><span>.</span><span>.</span>
+                </div>
+                <div className="chat-compose">
+                  <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Message..." maxLength={500} onKeyDown={e => e.key === 'Enter' && sendChatMessage()} />
+                  <button onClick={sendChatMessage}>Envoyer</button>
+                </div>
+              </>
+            ) : (
+              <div className="chat-disabled">
+                <p>Le chat est désactivé pour ton compte sur cet appareil.</p>
+                <button onClick={() => setChatPreference(true)}>Activer le chat</button>
+              </div>
+            )}
+          </div>
+        )}
+        <button className="chat-bubble" onClick={() => setChatOpen(v => !v)}>
+          {chatEnabled ? 'Chat' : 'Chat off'}
+        </button>
+      </div>
+
       {/* TOAST */}
       <div className={`toast ${toastVisible ? 'show' : ''}`}>{toast}</div>
     </>
@@ -868,6 +1025,48 @@ const globalCss = `
           .btn-up:hover, .btn-down:hover {color:var(--gold); }
           .btn-up:disabled, .btn-down:disabled {opacity:0.2; cursor:default; }
 
+          /* CHAT */
+          .chat-widget {position:fixed; right:22px; bottom:22px; z-index:9000; display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+          .chat-bubble {min-width:78px; height:48px; border-radius:24px; border:1px solid var(--gold); background:var(--gold); color:#000; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 12px 35px rgba(0,0,0,0.45); padding:0 18px; }
+          .chat-widget.open .chat-bubble {background:var(--bg2); color:var(--gold); }
+          .chat-panel {width:340px; max-width:calc(100vw - 32px); height:430px; max-height:calc(100vh - 120px); background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:0 22px 70px rgba(0,0,0,0.65); display:flex; flex-direction:column; }
+          .chat-head {display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 12px; border-bottom:1px solid var(--border); background:var(--bg3); }
+          .chat-title {font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:var(--gold); }
+          .chat-room {font-size:12px; color:var(--text2); margin-top:2px; }
+          .chat-head-actions {display:flex; align-items:center; gap:8px; }
+          .chat-head-actions button {width:28px; height:28px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; font-size:20px; line-height:1; }
+          .chat-toggle {display:flex; align-items:center; gap:6px; color:var(--text2); font-size:12px; cursor:pointer; }
+          .chat-toggle input {accent-color:var(--gold); }
+          .chat-messages {flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+          .chat-empty {margin:auto; color:var(--text2); font-size:13px; text-align:center; }
+          .chat-message {max-width:88%; align-self:flex-start; }
+          .chat-message.mine {align-self:flex-end; }
+          .chat-meta {display:flex; align-items:center; gap:7px; margin-bottom:4px; font-size:11px; color:var(--text2); }
+          .chat-message.mine .chat-meta {justify-content:flex-end; }
+          .chat-meta span {color:var(--gold); font-weight:700; }
+          .chat-meta small {font-size:10px; color:var(--text2); }
+          .chat-bubble-text {background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:12px; border-bottom-left-radius:4px; padding:9px 11px; font-size:13px; line-height:1.4; word-break:break-word; }
+          .chat-message.mine .chat-bubble-text {background:var(--gold); color:#000; border-color:var(--gold); border-bottom-left-radius:12px; border-bottom-right-radius:4px; }
+          .chat-typing {height:22px; padding:0 14px; color:var(--text2); font-size:12px; opacity:0; transition:opacity 0.2s; }
+          .chat-typing.show {opacity:1; }
+          .chat-typing span {animation:chatDots 1s infinite; }
+          .chat-typing span:nth-child(2) {animation-delay:0.15s; }
+          .chat-typing span:nth-child(3) {animation-delay:0.3s; }
+          @keyframes chatDots {0%, 60%, 100% {opacity:0.25;} 30% {opacity:1;}}
+          .chat-compose {display:flex; gap:8px; padding:12px; border-top:1px solid var(--border); background:var(--bg3); }
+          .chat-compose input {flex:1; min-width:0; background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:9px; padding:10px 11px; font-size:13px; outline:none; }
+          .chat-compose input:focus {border-color:var(--gold); }
+          .chat-compose button, .chat-disabled button {background:var(--gold); border:none; color:#000; border-radius:9px; padding:10px 12px; font-size:12px; font-weight:800; cursor:pointer; }
+          .chat-disabled {height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:28px; color:var(--text2); text-align:center; font-size:13px; }
+          .chat-consent {position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,0.68); display:flex; align-items:center; justify-content:center; padding:18px; }
+          .chat-consent-box {width:390px; max-width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:26px; box-shadow:0 24px 80px rgba(0,0,0,0.7); }
+          .chat-consent-box h2 {font-family:'Playfair Display',serif; color:var(--gold); font-size:24px; margin-bottom:10px; }
+          .chat-consent-box p {color:var(--text2); font-size:14px; line-height:1.55; margin-bottom:20px; }
+          .chat-consent-actions {display:flex; gap:10px; }
+          .chat-consent-actions button {flex:1; padding:12px; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer; }
+          .chat-consent-primary {background:var(--gold); border:1px solid var(--gold); color:#000; }
+          .chat-consent-secondary {background:transparent; border:1px solid var(--border); color:var(--text2); }
+
           /* TOAST */
           .toast {position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--bg3); border:1px solid var(--gold); color:var(--text); padding:12px 24px; border-radius:30px; font-size:14px; font-weight:500; z-index:10000; transition:transform 0.3s ease; white-space:nowrap; pointer-events:none; }
           .toast.show {transform:translateX(-50%) translateY(0); }
@@ -884,6 +1083,9 @@ const globalCss = `
           .room-bar {padding:12px 16px; align-items:stretch; }
           .room-create {width:100%; }
           .room-create input {flex:1; width:auto; }
+          .chat-widget {right:14px; bottom:14px; }
+          .chat-panel {width:calc(100vw - 28px); height:410px; }
+          .chat-consent-actions {flex-direction:column; }
           .nav {padding:0 8px; }
           .nav-btn {padding:14px 10px; font-size:10px; letter-spacing:1px; }
           .page {padding:20px 16px; }
