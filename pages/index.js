@@ -64,6 +64,10 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatTypingUsers, setChatTypingUsers] = useState([])
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackType, setFeedbackType] = useState('Idée')
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -200,6 +204,29 @@ export default function App() {
     } catch (e) {
       showToast('Erreur chat: ' + e.message)
     }
+  }
+
+  async function sendFeedback() {
+    const message = feedbackMessage.trim()
+    if (!message) {
+      showToast('Écris ton retour avant d’envoyer.')
+      return
+    }
+
+    setFeedbackLoading(true)
+    try {
+      await api('POST', '/auth/feedback', {
+        type: feedbackType,
+        message,
+        roomName: currentRoom.name,
+      })
+      setFeedbackMessage('')
+      setFeedbackOpen(false)
+      showToast('Retour envoyé, merci !')
+    } catch (e) {
+      showToast('Erreur retour: ' + e.message)
+    }
+    setFeedbackLoading(false)
   }
 
   // ─── AUTH ───────────────────────────────────────────────
@@ -867,6 +894,37 @@ export default function App() {
         </button>
       </div>
 
+      <div className={`feedback-widget ${feedbackOpen ? 'open' : ''}`}>
+        {feedbackOpen && (
+          <div className="feedback-panel">
+            <div className="feedback-head">
+              <div>
+                <div className="feedback-title">Retour</div>
+                <div className="feedback-subtitle">Avis, bug ou idée d’ajout</div>
+              </div>
+              <button onClick={() => setFeedbackOpen(false)}>×</button>
+            </div>
+            <div className="feedback-body">
+              <div className="feedback-types">
+                {['Idée', 'Bug', 'Avis'].map(type => (
+                  <button key={type} className={feedbackType === type ? 'active' : ''} onClick={() => setFeedbackType(type)}>
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <textarea value={feedbackMessage} onChange={e => setFeedbackMessage(e.target.value)} maxLength={1500} placeholder="Dis ce que tu penses du site, ce qu’il manque, ou ce qui bug..." />
+              <div className="feedback-foot">
+                <span>{feedbackMessage.length}/1500</span>
+                <button onClick={sendFeedback} disabled={feedbackLoading}>{feedbackLoading ? 'Envoi...' : 'Envoyer'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        <button className="feedback-bubble" onClick={() => setFeedbackOpen(v => !v)}>
+          Retour
+        </button>
+      </div>
+
       {/* TOAST */}
       <div className={`toast ${toastVisible ? 'show' : ''}`}>{toast}</div>
     </>
@@ -1080,6 +1138,26 @@ const globalCss = `
           .chat-consent-primary {background:var(--gold); border:1px solid var(--gold); color:#000; }
           .chat-consent-secondary {background:transparent; border:1px solid var(--border); color:var(--text2); }
 
+          /* FEEDBACK */
+          .feedback-widget {position:fixed; left:22px; bottom:22px; z-index:8900; display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
+          .feedback-bubble {min-width:86px; height:46px; border-radius:23px; border:1px solid var(--border); background:var(--bg2); color:var(--gold); font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 12px 35px rgba(0,0,0,0.45); padding:0 18px; }
+          .feedback-widget.open .feedback-bubble {background:var(--gold); color:#000; border-color:var(--gold); }
+          .feedback-panel {width:330px; max-width:calc(100vw - 32px); background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:0 22px 70px rgba(0,0,0,0.65); }
+          .feedback-head {display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px; border-bottom:1px solid var(--border); background:var(--bg3); }
+          .feedback-title {font-family:'Playfair Display',serif; font-size:18px; font-weight:800; color:var(--gold); }
+          .feedback-subtitle {font-size:12px; color:var(--text2); margin-top:2px; }
+          .feedback-head button {width:28px; height:28px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; font-size:20px; line-height:1; }
+          .feedback-body {padding:14px; }
+          .feedback-types {display:flex; gap:8px; margin-bottom:12px; }
+          .feedback-types button {flex:1; border:1px solid var(--border); background:transparent; color:var(--text2); border-radius:8px; padding:8px; font-size:12px; font-weight:700; cursor:pointer; }
+          .feedback-types button.active, .feedback-types button:hover {background:var(--gold); color:#000; border-color:var(--gold); }
+          .feedback-body textarea {width:100%; min-height:118px; resize:vertical; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px; font-size:13px; line-height:1.45; outline:none; }
+          .feedback-body textarea:focus {border-color:var(--gold); }
+          .feedback-foot {display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; }
+          .feedback-foot span {font-size:11px; color:var(--text2); }
+          .feedback-foot button {background:var(--gold); border:none; color:#000; border-radius:9px; padding:10px 12px; font-size:12px; font-weight:800; cursor:pointer; }
+          .feedback-foot button:disabled {opacity:0.6; cursor:not-allowed; }
+
           /* TOAST */
           .toast {position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--bg3); border:1px solid var(--gold); color:var(--text); padding:12px 24px; border-radius:30px; font-size:14px; font-weight:500; z-index:10000; transition:transform 0.3s ease; white-space:nowrap; pointer-events:none; }
           .toast.show {transform:translateX(-50%) translateY(0); }
@@ -1099,6 +1177,8 @@ const globalCss = `
           .chat-widget {right:14px; bottom:14px; }
           .chat-panel {width:calc(100vw - 28px); height:410px; }
           .chat-consent-actions {flex-direction:column; }
+          .feedback-widget {left:14px; bottom:14px; }
+          .feedback-panel {width:calc(100vw - 28px); }
           .nav {padding:0 8px; }
           .nav-btn {padding:14px 10px; font-size:10px; letter-spacing:1px; }
           .page {padding:20px 16px; }
