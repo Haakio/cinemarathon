@@ -24,6 +24,7 @@ async function api(method, path, body) {
 
 // ─── App ───────────────────────────────────────────────────
 export default function App() {
+  const [mounted, setMounted] = useState(false)
   const [authed, setAuthed] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [authTab, setAuthTab] = useState('login')
@@ -66,6 +67,8 @@ export default function App() {
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
+
+  useEffect(() => { setMounted(true) }, [])
 
   // Restore session
   useEffect(() => {
@@ -394,6 +397,16 @@ export default function App() {
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
 
   // ──────────────────────────────────────────────────────────
+  if (!mounted) return (
+    <>
+      <Head>
+        <title>CinéMarathon</title>
+      </Head>
+      <style>{globalCss}</style>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />
+    </>
+  )
+
   if (!authed) return (
     <>
       <Head>
