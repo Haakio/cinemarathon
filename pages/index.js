@@ -42,12 +42,25 @@ async function api(method, path, body) {
   return data
 }
 
-const rtcConfig = {
+const fallbackRtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
   ],
+}
+
+let cachedRtcConfig = null
+
+async function getRtcConfig() {
+  if (cachedRtcConfig) return cachedRtcConfig
+  try {
+    const data = await api('GET', '/auth/watchparty/ice')
+    cachedRtcConfig = { iceServers: data.iceServers || fallbackRtcConfig.iceServers }
+  } catch {
+    cachedRtcConfig = fallbackRtcConfig
+  }
+  return cachedRtcConfig
 }
 
 function waitForIceGathering(peerConnection) {
@@ -286,7 +299,7 @@ export default function App() {
         try {
           let pc = hostPeerConnectionsRef.current[peer.id]
           if (!pc) {
-            pc = new RTCPeerConnection(rtcConfig)
+            pc = new RTCPeerConnection(await getRtcConfig())
             hostPeerConnectionsRef.current[peer.id] = pc
             pc.onicecandidate = event => {
               if (event.candidate) sendWatchPartyCandidate(peer.id, 'host', event.candidate)
@@ -311,7 +324,14 @@ export default function App() {
               peerId: peer.id,
               answer: JSON.stringify(pc.localDescription),
             })
-            setWatchPartyStatus('Reponse envoyee au spectateur. Connexion en cours...')
+            setWatchPartyStatus('Reponse envoyee au spectateur. Collecte reseau en cours...')
+            await waitForIceGathering(pc)
+            await api('POST', '/auth/watchparty', {
+              action: 'answer',
+              peerId: peer.id,
+              answer: JSON.stringify(pc.localDescription),
+            })
+            setWatchPartyStatus('Reponse reseau complete envoyee au spectateur.')
           }
 
           setWatchPartyViewerCount(count => Math.max(count, Object.keys(hostPeerConnectionsRef.current).length))
@@ -527,7 +547,7 @@ export default function App() {
 
     try {
       viewerPcRef.current?.close()
-      const pc = new RTCPeerConnection(rtcConfig)
+      const pc = new RTCPeerConnection(await getRtcConfig())
       viewerPcRef.current = pc
       pendingViewerCandidatesRef.current = []
       appliedHostCandidateCountRef.current = 0
