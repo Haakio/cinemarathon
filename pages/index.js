@@ -42,7 +42,13 @@ async function api(method, path, body) {
   return data
 }
 
-const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ],
+}
 
 function waitForIceGathering(peerConnection) {
   if (peerConnection.iceGatheringState === 'complete') return Promise.resolve()
@@ -59,7 +65,7 @@ function waitForIceGathering(peerConnection) {
     timeout = setTimeout(() => {
       peerConnection.removeEventListener('icegatheringstatechange', done)
       resolve()
-    }, 7000)
+    }, 12000)
   })
 }
 
@@ -287,13 +293,13 @@ export default function App() {
   }, [watchPartyPeers, watchPartyRole, watchPartySession])
 
   useEffect(() => {
-    if (hostVideoRef.current && hostStreamRef.current) {
+    if (hostVideoRef.current && hostStreamRef.current && hostVideoRef.current.srcObject !== hostStreamRef.current) {
       hostVideoRef.current.srcObject = hostStreamRef.current
     }
   }, [watchPartyRole, watchPartySession])
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStreamRef.current) {
+    if (remoteVideoRef.current && remoteStreamRef.current && remoteVideoRef.current.srcObject !== remoteStreamRef.current) {
       remoteVideoRef.current.srcObject = remoteStreamRef.current
     }
   }, [watchPartyRole])
@@ -371,7 +377,7 @@ export default function App() {
         audio: true,
       })
       hostStreamRef.current = stream
-      if (hostVideoRef.current) hostVideoRef.current.srcObject = stream
+      if (hostVideoRef.current && hostVideoRef.current.srcObject !== stream) hostVideoRef.current.srcObject = stream
       const data = await api('POST', '/auth/watchparty', { action: 'start', roomId: currentRoomId })
       setWatchPartySession(data.session)
       setWatchPartyRole('host')
@@ -418,13 +424,13 @@ export default function App() {
       const pc = new RTCPeerConnection(rtcConfig)
       viewerPcRef.current = pc
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'checking') setWatchPartyStatus('Connexion video en cours...')
+        if (pc.connectionState === 'checking') setWatchPartyStatus('Connexion video en cours... ca peut prendre quelques secondes.')
         if (pc.connectionState === 'connected') setWatchPartyStatus('Connecte a la seance.')
         if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion bloquee. Relance Rejoindre ou change de reseau.')
       }
       const remoteStream = new MediaStream()
       remoteStreamRef.current = remoteStream
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
+      if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStream) remoteVideoRef.current.srcObject = remoteStream
       pc.addTransceiver('video', { direction: 'recvonly' })
       pc.addTransceiver('audio', { direction: 'recvonly' })
       pc.ontrack = event => {
@@ -436,7 +442,7 @@ export default function App() {
         })
         setWatchPartyTrackCount(remoteStream.getTracks().length)
         setWatchPartyStatus(`Flux recu: ${remoteStream.getVideoTracks().length} video / ${remoteStream.getAudioTracks().length} audio.`)
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
+        if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStream) remoteVideoRef.current.srcObject = remoteStream
       }
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -1282,8 +1288,8 @@ export default function App() {
                 <div className="watchparty-card wide">
                   <h2>Écran de séance</h2>
                   <div className="watchparty-stage">
-                    {watchPartyRole === 'host' && <video ref={hostVideoRef} autoPlay muted playsInline />}
-                    {watchPartyRole === 'viewer' && <video ref={remoteVideoRef} autoPlay controls playsInline />}
+                    {watchPartyRole === 'host' && <video ref={hostVideoRef} autoPlay muted playsInline onLoadedMetadata={e => e.currentTarget.play().catch(() => { })} />}
+                    {watchPartyRole === 'viewer' && <video ref={remoteVideoRef} autoPlay controls playsInline onLoadedMetadata={e => e.currentTarget.play().catch(() => { })} />}
                     {watchPartyRole === 'idle' && (
                       <div className="watchparty-placeholder">
                         {watchPartySession ? 'Une session est disponible. Clique sur Rejoindre.' : 'Aucune séance en cours.'}
