@@ -86,6 +86,30 @@ export default async function handler(req, res) {
       )
     `
     await sql`
+      CREATE TABLE IF NOT EXISTS watchparty_sessions (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        host_user_id TEXT NOT NULL,
+        host_pseudo TEXT,
+        active BOOLEAN DEFAULT true,
+        started_at TIMESTAMPTZ DEFAULT NOW(),
+        ended_at TIMESTAMPTZ
+      )
+    `
+    await sql`
+      CREATE TABLE IF NOT EXISTS watchparty_peers (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        viewer_user_id TEXT NOT NULL,
+        viewer_pseudo TEXT,
+        offer TEXT NOT NULL,
+        answer TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
       INSERT INTO rooms (id, name, slug, created_by, created_at)
       VALUES ('marvel', 'Marvel', 'marvel', 'setup', NOW())
       ON CONFLICT (id) DO NOTHING

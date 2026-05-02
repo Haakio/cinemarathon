@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { patchnotes } from '../lib/patchnotes'
 
 // ─── API helpers ───────────────────────────────────────────
@@ -40,6 +40,22 @@ async function api(method, path, body) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Erreur')
   return data
+}
+
+const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+
+function waitForIceGathering(peerConnection) {
+  if (peerConnection.iceGatheringState === 'complete') return Promise.resolve()
+  return new Promise(resolve => {
+    const done = () => {
+      if (peerConnection.iceGatheringState === 'complete') {
+        peerConnection.removeEventListener('icegatheringstatechange', done)
+        resolve()
+      }
+    }
+    peerConnection.addEventListener('icegatheringstatechange', done)
+    setTimeout(resolve, 2500)
+  })
 }
 
 // ─── App ───────────────────────────────────────────────────
@@ -95,6 +111,19 @@ export default function App() {
   const [secretUnlocked, setSecretUnlocked] = useState(false)
   const [secretPassword, setSecretPassword] = useState('')
   const [secretError, setSecretError] = useState('')
+  const [watchPartySession, setWatchPartySession] = useState(null)
+  const [watchPartyPeers, setWatchPartyPeers] = useState([])
+  const [watchPartyRole, setWatchPartyRole] = useState('idle')
+  const [watchPartyStatus, setWatchPartyStatus] = useState('')
+  const [watchPartyJoining, setWatchPartyJoining] = useState(false)
+  const [watchPartyViewerCount, setWatchPartyViewerCount] = useState(0)
+  const hostStreamRef = useRef(null)
+  const remoteStreamRef = useRef(null)
+  const remoteVideoRef = useRef(null)
+  const hostVideoRef = useRef(null)
+  const viewerPcRef = useRef(null)
+  const hostPeerConnectionsRef = useRef({})
+  const viewerPeerIdRef = useRef(null)
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -199,6 +228,68 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [chatInput, chatEnabled, chatOpen, currentRoomId])
 
+  const loadWatchParty = useCallback(async () => {
+    if (!authed || !currentRoomId || !secretUnlocked) return
+    try {
+      const roomQuery = `roomId=${encodeURIComponent(currentRoomId)}`
+      const data = await api('GET', `/auth/watchparty?${roomQuery}`)
+      setWatchPartySession(data.session)
+      setWatchPartyPeers(data.peers || [])
+      setWatchPartyViewerCount((data.peers || []).filter(peer => peer.answer).length)
+    } catch { }
+  }, [authed, currentRoomId, secretUnlocked])
+
+  useEffect(() => {
+    if (!secretUnlocked || page !== 'secret') return
+    loadWatchParty()
+    const timer = setInterval(loadWatchParty, 2500)
+    return () => clearInterval(timer)
+  }, [secretUnlocked, page, loadWatchParty])
+
+  useEffect(() => {
+    if (watchPartyRole !== 'host' || !hostStreamRef.current || !watchPartySession) return
+
+    async function answerPendingPeers() {
+      for (const peer of watchPartyPeers) {
+        if (peer.answer || hostPeerConnectionsRef.current[peer.id]) continue
+
+        try {
+          const pc = new RTCPeerConnection(rtcConfig)
+          hostPeerConnectionsRef.current[peer.id] = pc
+          hostStreamRef.current.getTracks().forEach(track => pc.addTrack(track, hostStreamRef.current))
+          await pc.setRemoteDescription(JSON.parse(peer.offer))
+          const answer = await pc.createAnswer()
+          await pc.setLocalDescription(answer)
+          await waitForIceGathering(pc)
+          await api('POST', '/auth/watchparty', {
+            action: 'answer',
+            peerId: peer.id,
+            answer: JSON.stringify(pc.localDescription),
+          })
+          setWatchPartyViewerCount(count => Math.max(count, Object.keys(hostPeerConnectionsRef.current).length))
+        } catch {
+          delete hostPeerConnectionsRef.current[peer.id]
+        }
+      }
+    }
+
+    answerPendingPeers()
+  }, [watchPartyPeers, watchPartyRole, watchPartySession])
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current
+    }
+  }, [watchPartyRole])
+
+  useEffect(() => {
+    return () => {
+      Object.values(hostPeerConnectionsRef.current).forEach(pc => pc.close())
+      viewerPcRef.current?.close()
+      hostStreamRef.current?.getTracks().forEach(track => track.stop())
+    }
+  }, [])
+
   // Reload watched/watchlist when switching pages
   useEffect(() => { if (authed) loadData() }, [page])
   useEffect(() => { if (authed && page === 'dispos') loadAvailability() }, [page, authed, loadAvailability])
@@ -249,6 +340,110 @@ export default function App() {
     }
 
     setSecretError('Mot de passe incorrect.')
+  }
+
+  async function startWatchParty() {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      showToast('Partage écran indisponible sur ce navigateur.')
+      return
+    }
+
+    try {
+      setWatchPartyStatus('Choisis l’écran ou l’onglet à partager.')
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      })
+      hostStreamRef.current = stream
+      if (hostVideoRef.current) hostVideoRef.current.srcObject = stream
+      const data = await api('POST', '/auth/watchparty', { action: 'start', roomId: currentRoomId })
+      setWatchPartySession(data.session)
+      setWatchPartyRole('host')
+      setWatchPartyStatus('Session active. Les spectateurs peuvent rejoindre.')
+      stream.getVideoTracks()[0]?.addEventListener('ended', () => endWatchParty())
+    } catch (e) {
+      hostStreamRef.current?.getTracks().forEach(track => track.stop())
+      hostStreamRef.current = null
+      if (hostVideoRef.current) hostVideoRef.current.srcObject = null
+      setWatchPartyStatus('')
+      showToast('Watch Party: ' + (e.message || 'partage annulé'))
+    }
+  }
+
+  async function endWatchParty() {
+    try {
+      await api('POST', '/auth/watchparty', { action: 'end', roomId: currentRoomId })
+    } catch { }
+    Object.values(hostPeerConnectionsRef.current).forEach(pc => pc.close())
+    hostPeerConnectionsRef.current = {}
+    viewerPcRef.current?.close()
+    viewerPcRef.current = null
+    hostStreamRef.current?.getTracks().forEach(track => track.stop())
+    hostStreamRef.current = null
+    remoteStreamRef.current = null
+    if (hostVideoRef.current) hostVideoRef.current.srcObject = null
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+    setWatchPartySession(null)
+    setWatchPartyPeers([])
+    setWatchPartyRole('idle')
+    setWatchPartyStatus('Session arrêtée.')
+    setWatchPartyViewerCount(0)
+  }
+
+  async function joinWatchParty() {
+    if (!watchPartySession || watchPartyJoining) return
+    setWatchPartyJoining(true)
+    setWatchPartyStatus('Connexion à la séance...')
+
+    try {
+      const pc = new RTCPeerConnection(rtcConfig)
+      viewerPcRef.current = pc
+      const remoteStream = new MediaStream()
+      remoteStreamRef.current = remoteStream
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
+      pc.addTransceiver('video', { direction: 'recvonly' })
+      pc.addTransceiver('audio', { direction: 'recvonly' })
+      pc.ontrack = event => {
+        event.streams[0]?.getTracks().forEach(track => remoteStream.addTrack(track))
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
+      }
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      await waitForIceGathering(pc)
+      const data = await api('POST', '/auth/watchparty', {
+        action: 'join',
+        roomId: currentRoomId,
+        sessionId: watchPartySession.id,
+        offer: JSON.stringify(pc.localDescription),
+      })
+      viewerPeerIdRef.current = data.peer.id
+
+      const startedAt = Date.now()
+      const timer = setInterval(async () => {
+        try {
+          const peerData = await api('GET', `/auth/watchparty?peerId=${encodeURIComponent(viewerPeerIdRef.current)}`)
+          if (peerData.peer?.answer) {
+            clearInterval(timer)
+            await pc.setRemoteDescription(JSON.parse(peerData.peer.answer))
+            setWatchPartyRole('viewer')
+            setWatchPartyStatus('Connecté à la séance.')
+            setWatchPartyJoining(false)
+          } else if (Date.now() - startedAt > 30000) {
+            clearInterval(timer)
+            setWatchPartyJoining(false)
+            setWatchPartyStatus('Connexion trop longue. Réessaie.')
+          }
+        } catch {
+          clearInterval(timer)
+          setWatchPartyJoining(false)
+          setWatchPartyStatus('Impossible de rejoindre la séance.')
+        }
+      }, 1500)
+    } catch (e) {
+      setWatchPartyJoining(false)
+      setWatchPartyStatus('')
+      showToast('Watch Party: ' + (e.message || 'connexion impossible'))
+    }
   }
 
   function setChatPreference(enabled) {
@@ -1015,29 +1210,51 @@ export default function App() {
                 <div>
                   <div className="watchparty-kicker">Zone secrète</div>
                   <h1>Watch Party</h1>
-                  <p>Prépare ici la future séance privée : partage d’écran, audio, statut de session et accès par code.</p>
+                  <p>Partage ton écran et ton audio avec les membres de la room. Choisis plutôt un onglet Chrome avec audio pour maximiser les chances que le son passe.</p>
                 </div>
-                <button className="watchparty-status">Session inactive</button>
+                <div className={`watchparty-status ${watchPartySession ? 'active' : ''}`}>
+                  {watchPartySession ? `Session active · ${watchPartyViewerCount} connecté${watchPartyViewerCount > 1 ? 's' : ''}` : 'Session inactive'}
+                </div>
               </div>
 
               <div className="watchparty-grid">
                 <div className="watchparty-card">
                   <h2>Démarrer une session</h2>
-                  <p>Le bouton final demandera l’autorisation du navigateur pour capturer ton écran et, si possible, l’audio.</p>
-                  <button disabled>Démarrer bientôt</button>
+                  <p>Le navigateur te demandera quoi partager. Pour le son, privilégie “onglet Chrome” ou active l’audio dans la fenêtre de partage.</p>
+                  {watchPartyRole === 'host' ? (
+                    <button className="watchparty-danger" onClick={endWatchParty}>Arrêter la session</button>
+                  ) : (
+                    <button onClick={startWatchParty}>Démarrer la session</button>
+                  )}
                 </div>
                 <div className="watchparty-card">
                   <h2>Accès spectateurs</h2>
-                  <p>Quand une session sera active, les autres verront ici l’état de la séance et pourront rejoindre avec le code secret.</p>
-                  <div className="watchparty-code">azertypoppop</div>
+                  <p>Si une session est active, les membres qui ont le mot de passe secret peuvent rejoindre depuis cette page.</p>
+                  {watchPartyRole === 'viewer' ? (
+                    <div className="watchparty-code">Connecté</div>
+                  ) : (
+                    <button onClick={joinWatchParty} disabled={!watchPartySession || watchPartyJoining || watchPartyRole === 'host'}>
+                      {watchPartyJoining ? 'Connexion...' : 'Rejoindre'}
+                    </button>
+                  )}
                 </div>
                 <div className="watchparty-card wide">
-                  <h2>Plan technique</h2>
+                  <h2>Écran de séance</h2>
+                  <div className="watchparty-stage">
+                    {watchPartyRole === 'host' && <video ref={hostVideoRef} autoPlay muted playsInline />}
+                    {watchPartyRole === 'viewer' && <video ref={remoteVideoRef} autoPlay controls playsInline />}
+                    {watchPartyRole === 'idle' && (
+                      <div className="watchparty-placeholder">
+                        {watchPartySession ? 'Une session est disponible. Clique sur Rejoindre.' : 'Aucune séance en cours.'}
+                      </div>
+                    )}
+                  </div>
+                  {watchPartyStatus && <div className="watchparty-note">{watchPartyStatus}</div>}
                   <div className="watchparty-steps">
-                    <span>1. Démarrer la session</span>
-                    <span>2. Partager écran + audio</span>
-                    <span>3. Les membres rejoignent</span>
-                    <span>4. Fin de session quand tu coupes</span>
+                    <span>1. Hôte démarre</span>
+                    <span>2. Partage écran + audio</span>
+                    <span>3. Spectateurs rejoignent</span>
+                    <span>4. L’hôte arrête</span>
                   </div>
                 </div>
               </div>
@@ -1421,13 +1638,22 @@ const globalCss = `
           .watchparty-hero h1 {font-family:'Playfair Display',serif; font-size:38px; color:var(--gold); margin-bottom:8px; }
           .watchparty-hero p {color:var(--text2); max-width:620px; font-size:14px; line-height:1.55; }
           .watchparty-status {background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:999px; padding:10px 16px; font-size:13px; font-weight:800; white-space:nowrap; }
+          .watchparty-status.active {background:rgba(65,185,126,0.14); border-color:#41b97e; color:#8df0bd; }
           .watchparty-grid {display:grid; grid-template-columns:1fr 1fr; gap:18px; }
           .watchparty-card {background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:22px; }
           .watchparty-card.wide {grid-column:1 / -1; }
           .watchparty-card h2 {font-family:'Playfair Display',serif; color:var(--gold); font-size:22px; margin-bottom:10px; }
           .watchparty-card p {color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:16px; }
-          .watchparty-card button {background:var(--bg3); border:1px solid var(--border); color:var(--text2); border-radius:10px; padding:12px 14px; font-weight:800; cursor:not-allowed; }
+          .watchparty-card button {background:var(--gold); border:1px solid var(--gold); color:#000; border-radius:10px; padding:12px 14px; font-weight:900; cursor:pointer; transition:transform 0.15s, background 0.15s, opacity 0.15s; }
+          .watchparty-card button:hover:not(:disabled) {background:var(--gold-light); transform:translateY(-1px); }
+          .watchparty-card button:disabled {background:var(--bg3); border-color:var(--border); color:var(--text2); cursor:not-allowed; opacity:0.58; transform:none; }
+          .watchparty-card button.watchparty-danger {background:transparent; border-color:var(--red); color:var(--red); }
+          .watchparty-card button.watchparty-danger:hover {background:rgba(255,90,90,0.12); }
           .watchparty-code {display:inline-flex; background:var(--bg3); border:1px solid var(--gold); color:var(--gold); border-radius:10px; padding:10px 14px; font-size:14px; font-weight:900; letter-spacing:1px; }
+          .watchparty-stage {position:relative; width:100%; aspect-ratio:16/9; min-height:260px; background:#050505; border:1px solid var(--border); border-radius:14px; overflow:hidden; margin:4px 0 14px; display:flex; align-items:center; justify-content:center; }
+          .watchparty-stage video {width:100%; height:100%; object-fit:contain; background:#000; }
+          .watchparty-placeholder {height:100%; width:100%; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--text2); padding:24px; font-size:15px; }
+          .watchparty-note {border:1px solid var(--border); background:var(--bg3); border-radius:10px; color:var(--text); padding:10px 12px; margin-bottom:12px; font-size:13px; }
           .watchparty-steps {display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
           .watchparty-steps span {background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); font-size:13px; text-align:center; }
 
