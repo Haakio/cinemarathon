@@ -199,6 +199,12 @@ export default function App() {
   // Reload watched/watchlist when switching pages
   useEffect(() => { if (authed) loadData() }, [page])
   useEffect(() => { if (authed && page === 'dispos') loadAvailability() }, [page, authed, loadAvailability])
+  useEffect(() => {
+    if (!authed || page !== 'dispos') return
+    loadAvailability()
+    const timer = setInterval(loadAvailability, 2500)
+    return () => clearInterval(timer)
+  }, [authed, page, loadAvailability])
 
   // Load current watch state when watchIdx or watchlist changes
   useEffect(() => {
