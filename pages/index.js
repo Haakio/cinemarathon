@@ -14,6 +14,23 @@ function saveChatPref(userId, value) { localStorage.setItem(`cm_chat_pref_${user
 function getPatchPref(userId) { return typeof window !== 'undefined' ? localStorage.getItem(`cm_patchnotes_${userId}`) : null }
 function savePatchPref(userId) { localStorage.setItem(`cm_patchnotes_${userId}`, patchnotes.version) }
 
+const cinemaSlots = [
+  { key: 'early', label: '18h00', vibe: 'Afterwork' },
+  { key: 'prime', label: '20h30', vibe: 'Séance principale' },
+  { key: 'late', label: '22h30', vibe: 'Late show' },
+]
+
+function getCinemaDays() {
+  if (typeof window === 'undefined') return []
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setDate(date.getDate() + index)
+    const key = date.toISOString().slice(0, 10)
+    const label = date.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+    return { key, label }
+  })
+}
+
 async function api(method, path, body) {
   const res = await fetch('/api' + path, {
     method,
@@ -73,6 +90,8 @@ export default function App() {
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [patchnotesOpen, setPatchnotesOpen] = useState(false)
+  const [availability, setAvailability] = useState([])
+  const [availabilityPreference, setAvailabilityPreference] = useState('any')
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -111,8 +130,18 @@ export default function App() {
     setLoading(false)
   }, [authed, currentRoomId])
 
+  const loadAvailability = useCallback(async () => {
+    if (!authed || !currentRoomId) return
+    try {
+      const roomQuery = `roomId=${encodeURIComponent(currentRoomId)}`
+      const entries = await api('GET', `/auth/availability?${roomQuery}`)
+      setAvailability(entries)
+    } catch { }
+  }, [authed, currentRoomId])
+
   useEffect(() => { if (authed) loadRooms() }, [authed, loadRooms])
   useEffect(() => { if (authed) loadData() }, [authed, loadData])
+  useEffect(() => { if (authed) loadAvailability() }, [authed, loadAvailability])
 
   useEffect(() => {
     if (!authed || !currentUser?.id) return
@@ -169,6 +198,7 @@ export default function App() {
 
   // Reload watched/watchlist when switching pages
   useEffect(() => { if (authed) loadData() }, [page])
+  useEffect(() => { if (authed && page === 'dispos') loadAvailability() }, [page, authed, loadAvailability])
 
   // Load current watch state when watchIdx or watchlist changes
   useEffect(() => {
@@ -248,6 +278,28 @@ export default function App() {
       showToast('Erreur retour: ' + e.message)
     }
     setFeedbackLoading(false)
+  }
+
+  async function toggleAvailability(day, slot) {
+    const alreadyAvailable = availability.some(entry =>
+      entry.user_id === currentUser?.id &&
+      entry.day_key === day.key &&
+      entry.slot_key === slot.key
+    )
+
+    try {
+      await api('POST', '/auth/availability', {
+        roomId: currentRoomId,
+        dayKey: day.key,
+        slotKey: slot.key,
+        slotLabel: `${day.label} ${slot.label}`,
+        preference: availabilityPreference,
+        available: !alreadyAvailable,
+      })
+      loadAvailability()
+    } catch (e) {
+      showToast('Erreur dispos: ' + e.message)
+    }
   }
 
   // ─── AUTH ───────────────────────────────────────────────
@@ -445,6 +497,24 @@ export default function App() {
   const myWatchEntry = currentItem ? watched.find(w => w.item_id === currentItem.id && w.user_id === currentUser?.id) : null
   const anySeen = currentItem ? seenItemIds.includes(currentItem.id) : false
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
+  const cinemaDays = mounted ? getCinemaDays() : []
+  const availabilityBySlot = availability.reduce((acc, entry) => {
+    const key = `${entry.day_key}|${entry.slot_key}`
+    if (!acc[key]) acc[key] = []
+    acc[key].push(entry)
+    return acc
+  }, {})
+  const bestAvailability = Object.entries(availabilityBySlot)
+    .map(([key, entries]) => {
+      const [dayKey, slotKey] = key.split('|')
+      const day = cinemaDays.find(d => d.key === dayKey)
+      const slot = cinemaSlots.find(s => s.key === slotKey)
+      return { key, day, slot, entries }
+    })
+    .filter(item => item.day && item.slot)
+    .sort((a, b) => b.entries.length - a.entries.length || a.day.key.localeCompare(b.day.key))
+    .slice(0, 3)
+  const suggestedAvailabilityItem = watchlist.find(item => !seenItemIds.includes(item.id)) || watchlist[0] || null
 
   // ──────────────────────────────────────────────────────────
   if (!mounted) return (
@@ -547,7 +617,7 @@ export default function App() {
 
       {/* NAV */}
       <nav className="nav">
-        {[['liste', '🎬 Liste'], ['regarder', '▶ Regarder'], ['vu', '✓ Déjà vu'], ['admin', '⚙ Admin']].map(([id, label]) => (
+        {[['liste', '🎬 Liste'], ['regarder', '▶ Regarder'], ['vu', '✓ Déjà vu'], ['dispos', '◷ Dispos'], ['admin', '⚙ Admin']].map(([id, label]) => (
           <button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>{label}</button>
         ))}
       </nav>
@@ -810,6 +880,96 @@ export default function App() {
       )}
 
       {/* ── ADMIN ── */}
+      {page === 'dispos' && (
+        <div className="page">
+          <h1 className="page-title">Dispos cinéma</h1>
+          <p className="page-subtitle">Trouvez le meilleur créneau pour lancer une séance dans la room {currentRoom.name}</p>
+
+          <div className="availability-hero">
+            <div>
+              <div className="availability-kicker">Projecteur de groupe</div>
+              <h2>{bestAvailability[0] ? `${bestAvailability[0].day.label} à ${bestAvailability[0].slot.label}` : 'Aucun créneau commun pour le moment'}</h2>
+              <p>
+                {bestAvailability[0]
+                  ? `${bestAvailability[0].entries.length} membre${bestAvailability[0].entries.length > 1 ? 's' : ''} dispo pour une ${bestAvailability[0].slot.vibe.toLowerCase()}.`
+                  : 'Cochez vos dispos pour faire apparaître le meilleur moment de visionnage.'}
+              </p>
+            </div>
+            {suggestedAvailabilityItem && (
+              <div className="availability-suggestion">
+                <span>À lancer</span>
+                <strong>{suggestedAvailabilityItem.title}</strong>
+                <small>{suggestedAvailabilityItem.type === 'film' ? 'Film' : 'Série'}{suggestedAvailabilityItem.year ? ` · ${suggestedAvailabilityItem.year}` : ''}</small>
+              </div>
+            )}
+          </div>
+
+          <div className="availability-controls">
+            <span>Mon envie du moment</span>
+            {[
+              ['any', 'Peu importe'],
+              ['film', 'Film'],
+              ['serie', 'Série'],
+              ['short', 'Épisode court'],
+            ].map(([value, label]) => (
+              <button key={value} className={availabilityPreference === value ? 'active' : ''} onClick={() => setAvailabilityPreference(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="availability-grid">
+            {cinemaDays.map(day => (
+              <div key={day.key} className="availability-day">
+                <div className="availability-day-title">{day.label}</div>
+                {cinemaSlots.map(slot => {
+                  const slotEntries = availabilityBySlot[`${day.key}|${slot.key}`] || []
+                  const mine = slotEntries.some(entry => entry.user_id === currentUser?.id)
+                  return (
+                    <button key={slot.key} className={`availability-slot ${mine ? 'mine' : ''}`} onClick={() => toggleAvailability(day, slot)}>
+                      <span>{slot.label}</span>
+                      <small>{slot.vibe}</small>
+                      <strong>{slotEntries.length}</strong>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+
+          <div className="availability-board">
+            <div className="availability-card">
+              <h2>Meilleurs créneaux</h2>
+              {bestAvailability.length === 0 ? (
+                <p className="availability-empty">Pas encore assez de dispos pour calculer une séance.</p>
+              ) : bestAvailability.map(item => (
+                <div key={item.key} className="availability-rank">
+                  <div>
+                    <strong>{item.day.label} · {item.slot.label}</strong>
+                    <span>{item.entries.map(entry => entry.pseudo).join(', ')}</span>
+                  </div>
+                  <b>{item.entries.length}</b>
+                </div>
+              ))}
+            </div>
+            <div className="availability-card">
+              <h2>Casting dispo</h2>
+              {availability.length === 0 ? (
+                <p className="availability-empty">Personne n’a encore coché de créneau.</p>
+              ) : [...new Set(availability.map(entry => entry.pseudo))].map(pseudo => {
+                const count = availability.filter(entry => entry.pseudo === pseudo).length
+                return (
+                  <div key={pseudo} className="availability-person">
+                    <span>{pseudo}</span>
+                    <b>{count} créneau{count > 1 ? 'x' : ''}</b>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {page === 'admin' && (
         <div className="page">
           <h1 className="page-title">Administration</h1>
@@ -1135,6 +1295,40 @@ const globalCss = `
           .vu-date {font-size:12px; color:var(--text2); margin-top:4px; }
           .vu-comment {margin-top:8px; font-size:13px; color:var(--text2); line-height:1.5; font-style:italic; border-left:2px solid var(--border); padding-left:10px; }
 
+          /* DISPOS */
+          .availability-hero {display:flex; justify-content:space-between; gap:20px; align-items:stretch; background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:18px; }
+          .availability-kicker {font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+          .availability-hero h2 {font-family:'Playfair Display',serif; font-size:28px; color:var(--text); margin-bottom:8px; }
+          .availability-hero p {color:var(--text2); font-size:14px; line-height:1.5; }
+          .availability-suggestion {min-width:210px; background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:16px; display:flex; flex-direction:column; justify-content:center; gap:5px; }
+          .availability-suggestion span {font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+          .availability-suggestion strong {font-family:'Playfair Display',serif; color:var(--gold); font-size:20px; line-height:1.15; }
+          .availability-suggestion small {color:var(--text2); font-size:12px; }
+          .availability-controls {display:flex; align-items:center; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+          .availability-controls span {font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-right:4px; }
+          .availability-controls button {border:1px solid var(--border); background:transparent; color:var(--text2); border-radius:999px; padding:8px 14px; font-size:13px; cursor:pointer; }
+          .availability-controls button.active, .availability-controls button:hover {background:var(--gold); border-color:var(--gold); color:#000; font-weight:700; }
+          .availability-grid {display:grid; grid-template-columns:repeat(7,minmax(110px,1fr)); gap:10px; margin-bottom:22px; }
+          .availability-day {background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:10px; }
+          .availability-day-title {color:var(--gold); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:9px; text-align:center; }
+          .availability-slot {width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 8px; margin-bottom:8px; cursor:pointer; display:grid; grid-template-columns:1fr auto; gap:2px 8px; text-align:left; transition:all 0.2s; }
+          .availability-slot:last-child {margin-bottom:0; }
+          .availability-slot span {font-weight:800; font-size:14px; }
+          .availability-slot small {grid-column:1; color:var(--text2); font-size:11px; }
+          .availability-slot strong {grid-column:2; grid-row:1 / span 2; align-self:center; justify-self:end; width:24px; height:24px; border-radius:50%; background:var(--bg2); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:12px; }
+          .availability-slot.mine {background:rgba(201,168,76,0.18); border-color:var(--gold); }
+          .availability-slot.mine strong {background:var(--gold); color:#000; }
+          .availability-board {display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+          .availability-card {background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:20px; }
+          .availability-card h2 {font-family:'Playfair Display',serif; color:var(--gold); font-size:22px; margin-bottom:14px; }
+          .availability-empty {color:var(--text2); font-size:14px; line-height:1.5; }
+          .availability-rank, .availability-person {display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--border); }
+          .availability-rank:first-of-type, .availability-person:first-of-type {border-top:none; padding-top:0; }
+          .availability-rank div {display:flex; flex-direction:column; gap:4px; min-width:0; }
+          .availability-rank strong, .availability-person span {color:var(--text); font-size:14px; }
+          .availability-rank span {color:var(--text2); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .availability-rank b, .availability-person b {background:var(--gold); color:#000; border-radius:999px; padding:5px 9px; font-size:12px; white-space:nowrap; }
+
           /* ADMIN */
           .admin-grid {display:grid; grid-template-columns:1fr 1fr; gap:24px; }
           .admin-card {background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:28px; }
@@ -1252,6 +1446,9 @@ const globalCss = `
           .chat-consent-actions {flex-direction:column; }
           .feedback-widget {left:14px; bottom:14px; }
           .feedback-panel {width:calc(100vw - 28px); }
+          .availability-hero {flex-direction:column; padding:18px; }
+          .availability-grid {grid-template-columns:1fr; }
+          .availability-board {grid-template-columns:1fr; }
           .nav {padding:0 8px; }
           .nav-btn {padding:14px 10px; font-size:10px; letter-spacing:1px; }
           .page {padding:20px 16px; }

@@ -73,6 +73,19 @@ export default async function handler(req, res) {
       )
     `
     await sql`
+      CREATE TABLE IF NOT EXISTS availability (
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        pseudo TEXT,
+        day_key TEXT NOT NULL,
+        slot_key TEXT NOT NULL,
+        slot_label TEXT NOT NULL,
+        preference TEXT DEFAULT 'any',
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (room_id, user_id, day_key, slot_key)
+      )
+    `
+    await sql`
       INSERT INTO rooms (id, name, slug, created_by, created_at)
       VALUES ('marvel', 'Marvel', 'marvel', 'setup', NOW())
       ON CONFLICT (id) DO NOTHING
