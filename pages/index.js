@@ -129,6 +129,7 @@ export default function App() {
   const [watchPartyJoining, setWatchPartyJoining] = useState(false)
   const [watchPartyViewerCount, setWatchPartyViewerCount] = useState(0)
   const [watchPartyTrackCount, setWatchPartyTrackCount] = useState(0)
+  const [watchPartyMuted, setWatchPartyMuted] = useState(true)
   const hostStreamRef = useRef(null)
   const remoteStreamRef = useRef(null)
   const remoteVideoRef = useRef(null)
@@ -364,6 +365,20 @@ export default function App() {
     setSecretError('Mot de passe incorrect.')
   }
 
+  function playWatchPartyVideo(unmute = false) {
+    const video = remoteVideoRef.current
+    if (!video) return
+    if (unmute) {
+      video.muted = false
+      setWatchPartyMuted(false)
+    }
+    video.play?.().then(() => {
+      setWatchPartyStatus(unmute ? 'Lecture lancee avec le son.' : 'Lecture lancee. Active le son quand tu veux.')
+    }).catch(() => {
+      setWatchPartyStatus('Clique sur Lancer la video pour autoriser la lecture.')
+    })
+  }
+
   async function startWatchParty() {
     if (!navigator.mediaDevices?.getDisplayMedia) {
       showToast('Partage écran indisponible sur ce navigateur.')
@@ -411,12 +426,14 @@ export default function App() {
     setWatchPartyStatus('Session arrêtée.')
     setWatchPartyViewerCount(0)
     setWatchPartyTrackCount(0)
+    setWatchPartyMuted(true)
   }
 
   async function joinWatchParty() {
     if (!watchPartySession || watchPartyJoining) return
     setWatchPartyJoining(true)
     setWatchPartyTrackCount(0)
+    setWatchPartyMuted(true)
     setWatchPartyStatus('Connexion à la séance...')
 
     try {
@@ -443,6 +460,7 @@ export default function App() {
         setWatchPartyTrackCount(remoteStream.getTracks().length)
         setWatchPartyStatus(`Flux recu: ${remoteStream.getVideoTracks().length} video / ${remoteStream.getAudioTracks().length} audio.`)
         if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStream) remoteVideoRef.current.srcObject = remoteStream
+        setTimeout(() => playWatchPartyVideo(false), 100)
       }
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -465,9 +483,7 @@ export default function App() {
             setWatchPartyRole('viewer')
             setWatchPartyStatus('Connecte a la seance. Si la video ne part pas, clique sur lecture.')
             setTimeout(() => {
-              remoteVideoRef.current?.play?.().catch(() => {
-                setWatchPartyStatus('Connecte. Clique sur lecture dans le lecteur video.')
-              })
+              playWatchPartyVideo(false)
             }, 250)
             setWatchPartyJoining(false)
           } else if (Date.now() - startedAt > 30000) {
@@ -1289,7 +1305,7 @@ export default function App() {
                   <h2>Écran de séance</h2>
                   <div className="watchparty-stage">
                     {watchPartyRole === 'host' && <video ref={hostVideoRef} autoPlay muted playsInline onLoadedMetadata={e => e.currentTarget.play().catch(() => { })} />}
-                    {watchPartyRole === 'viewer' && <video ref={remoteVideoRef} autoPlay controls playsInline onLoadedMetadata={e => e.currentTarget.play().catch(() => { })} />}
+                    {watchPartyRole === 'viewer' && <video ref={remoteVideoRef} autoPlay controls playsInline muted={watchPartyMuted} onLoadedMetadata={() => playWatchPartyVideo(false)} onCanPlay={() => playWatchPartyVideo(false)} />}
                     {watchPartyRole === 'idle' && (
                       <div className="watchparty-placeholder">
                         {watchPartySession ? 'Une session est disponible. Clique sur Rejoindre.' : 'Aucune séance en cours.'}
@@ -1298,9 +1314,15 @@ export default function App() {
                   </div>
                   {watchPartyStatus && <div className="watchparty-note">{watchPartyStatus}</div>}
                   {watchPartyRole === 'viewer' && (
-                    <div className="watchparty-note">
-                      Pistes recues: {watchPartyTrackCount}. Si ca reste a 0, la connexion WebRTC ne transmet pas encore le flux.
-                    </div>
+                    <>
+                      <div className="watchparty-actions watchparty-player-actions">
+                        <button onClick={() => playWatchPartyVideo(false)}>Lancer la video</button>
+                        <button className="watchparty-secondary" onClick={() => playWatchPartyVideo(true)}>Activer le son</button>
+                      </div>
+                      <div className="watchparty-note">
+                        Pistes recues: {watchPartyTrackCount}. Si ca reste a 2 mais que l'image ne part pas, la source partagee peut etre protegee ou bloquee par le navigateur.
+                      </div>
+                    </>
                   )}
                   <div className="watchparty-steps">
                     <span>1. Hôte démarre</span>
@@ -1702,6 +1724,7 @@ const globalCss = `
           .watchparty-card button.watchparty-danger {background:transparent; border-color:var(--red); color:var(--red); }
           .watchparty-card button.watchparty-danger:hover {background:rgba(255,90,90,0.12); }
           .watchparty-actions {display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+          .watchparty-player-actions {margin:0 0 12px; }
           .watchparty-card button.watchparty-secondary {background:transparent; border-color:var(--border); color:var(--text); }
           .watchparty-card button.watchparty-secondary:hover:not(:disabled) {background:var(--bg3); }
           .watchparty-code {display:inline-flex; background:var(--bg3); border:1px solid var(--gold); color:var(--gold); border-radius:10px; padding:10px 14px; font-size:14px; font-weight:900; letter-spacing:1px; }
