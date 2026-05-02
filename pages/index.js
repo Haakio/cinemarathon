@@ -15,8 +15,8 @@ function getPatchPref(userId) { return typeof window !== 'undefined' ? localStor
 function savePatchPref(userId) { localStorage.setItem(`cm_patchnotes_${userId}`, patchnotes.version) }
 
 const cinemaSlots = [
-  { key: 'early', label: '18h00', vibe: 'Afterwork' },
   { key: 'prime', label: '20h30', vibe: 'Séance principale' },
+  { key: 'second', label: '21h30', vibe: 'Deuxième séance' },
   { key: 'late', label: '22h30', vibe: 'Late show' },
 ]
 
