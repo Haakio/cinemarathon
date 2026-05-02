@@ -47,14 +47,19 @@ const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
 function waitForIceGathering(peerConnection) {
   if (peerConnection.iceGatheringState === 'complete') return Promise.resolve()
   return new Promise(resolve => {
+    let timeout
     const done = () => {
       if (peerConnection.iceGatheringState === 'complete') {
         peerConnection.removeEventListener('icegatheringstatechange', done)
+        clearTimeout(timeout)
         resolve()
       }
     }
     peerConnection.addEventListener('icegatheringstatechange', done)
-    setTimeout(resolve, 2500)
+    timeout = setTimeout(() => {
+      peerConnection.removeEventListener('icegatheringstatechange', done)
+      resolve()
+    }, 7000)
   })
 }
 
@@ -256,6 +261,10 @@ export default function App() {
         try {
           const pc = new RTCPeerConnection(rtcConfig)
           hostPeerConnectionsRef.current[peer.id] = pc
+          pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'connected') setWatchPartyStatus('Un spectateur est connecte a la seance.')
+            if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion spectateur instable. Il peut reessayer de rejoindre.')
+          }
           hostStreamRef.current.getTracks().forEach(track => pc.addTrack(track, hostStreamRef.current))
           await pc.setRemoteDescription(JSON.parse(peer.offer))
           const answer = await pc.createAnswer()
@@ -404,6 +413,11 @@ export default function App() {
     try {
       const pc = new RTCPeerConnection(rtcConfig)
       viewerPcRef.current = pc
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'checking') setWatchPartyStatus('Connexion video en cours...')
+        if (pc.connectionState === 'connected') setWatchPartyStatus('Connecte a la seance.')
+        if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion bloquee. Relance Rejoindre ou change de reseau.')
+      }
       const remoteStream = new MediaStream()
       remoteStreamRef.current = remoteStream
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
@@ -432,7 +446,12 @@ export default function App() {
             clearInterval(timer)
             await pc.setRemoteDescription(JSON.parse(peerData.peer.answer))
             setWatchPartyRole('viewer')
-            setWatchPartyStatus('Connecté à la séance.')
+            setWatchPartyStatus('Connecte a la seance. Si la video ne part pas, clique sur lecture.')
+            setTimeout(() => {
+              remoteVideoRef.current?.play?.().catch(() => {
+                setWatchPartyStatus('Connecte. Clique sur lecture dans le lecteur video.')
+              })
+            }, 250)
             setWatchPartyJoining(false)
           } else if (Date.now() - startedAt > 30000) {
             clearInterval(timer)
