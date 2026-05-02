@@ -122,6 +122,7 @@ export default function App() {
   const [watchPartyStatus, setWatchPartyStatus] = useState('')
   const [watchPartyJoining, setWatchPartyJoining] = useState(false)
   const [watchPartyViewerCount, setWatchPartyViewerCount] = useState(0)
+  const [watchPartyTrackCount, setWatchPartyTrackCount] = useState(0)
   const hostStreamRef = useRef(null)
   const remoteStreamRef = useRef(null)
   const remoteVideoRef = useRef(null)
@@ -403,14 +404,17 @@ export default function App() {
     setWatchPartyRole('idle')
     setWatchPartyStatus('Session arrêtée.')
     setWatchPartyViewerCount(0)
+    setWatchPartyTrackCount(0)
   }
 
   async function joinWatchParty() {
     if (!watchPartySession || watchPartyJoining) return
     setWatchPartyJoining(true)
+    setWatchPartyTrackCount(0)
     setWatchPartyStatus('Connexion à la séance...')
 
     try {
+      viewerPcRef.current?.close()
       const pc = new RTCPeerConnection(rtcConfig)
       viewerPcRef.current = pc
       pc.onconnectionstatechange = () => {
@@ -424,7 +428,14 @@ export default function App() {
       pc.addTransceiver('video', { direction: 'recvonly' })
       pc.addTransceiver('audio', { direction: 'recvonly' })
       pc.ontrack = event => {
-        event.streams[0]?.getTracks().forEach(track => remoteStream.addTrack(track))
+        const incomingTracks = event.streams[0]?.getTracks?.().length ? event.streams[0].getTracks() : [event.track]
+        incomingTracks.forEach(track => {
+          if (track && !remoteStream.getTracks().some(existing => existing.id === track.id)) {
+            remoteStream.addTrack(track)
+          }
+        })
+        setWatchPartyTrackCount(remoteStream.getTracks().length)
+        setWatchPartyStatus(`Flux recu: ${remoteStream.getVideoTracks().length} video / ${remoteStream.getAudioTracks().length} audio.`)
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
       }
       const offer = await pc.createOffer()
@@ -1280,6 +1291,11 @@ export default function App() {
                     )}
                   </div>
                   {watchPartyStatus && <div className="watchparty-note">{watchPartyStatus}</div>}
+                  {watchPartyRole === 'viewer' && (
+                    <div className="watchparty-note">
+                      Pistes recues: {watchPartyTrackCount}. Si ca reste a 0, la connexion WebRTC ne transmet pas encore le flux.
+                    </div>
+                  )}
                   <div className="watchparty-steps">
                     <span>1. Hôte démarre</span>
                     <span>2. Partage écran + audio</span>
