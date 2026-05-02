@@ -138,6 +138,7 @@ export default function App() {
   const [watchPartyViewerCount, setWatchPartyViewerCount] = useState(0)
   const [watchPartyTrackCount, setWatchPartyTrackCount] = useState(0)
   const [watchPartyMuted, setWatchPartyMuted] = useState(true)
+  const [watchPartyDebug, setWatchPartyDebug] = useState(null)
   const hostStreamRef = useRef(null)
   const remoteStreamRef = useRef(null)
   const remoteVideoRef = useRef(null)
@@ -414,6 +415,25 @@ export default function App() {
     return `webrtc=${pc.connectionState}, ice=${pc.iceConnectionState}, gather=${pc.iceGatheringState}`
   }
 
+  function updateWatchPartyDebug(patch) {
+    setWatchPartyDebug(previous => ({ ...(previous || {}), ...patch }))
+  }
+
+  function formatWatchPartyDebug() {
+    if (!watchPartyDebug) return ''
+    const bool = value => value ? 'oui' : 'non'
+    return [
+      `peer=${watchPartyDebug.peerId || '-'}`,
+      `answer recue=${bool(watchPartyDebug.answerReceived)}`,
+      `answer appliquee=${bool(watchPartyDebug.answerApplied)}`,
+      `candidats hote=${watchPartyDebug.hostCandidates ?? 0}`,
+      `appliques=${watchPartyDebug.hostCandidatesApplied ?? 0}`,
+      `webrtc=${watchPartyDebug.connectionState || '-'}`,
+      `ice=${watchPartyDebug.iceState || '-'}`,
+      `gather=${watchPartyDebug.gatherState || '-'}`,
+    ].join(' | ')
+  }
+
   async function sendWatchPartyCandidate(peerId, side, candidate) {
     if (!peerId || !candidate) return
     try {
@@ -485,6 +505,7 @@ export default function App() {
     setWatchPartyViewerCount(0)
     setWatchPartyTrackCount(0)
     setWatchPartyMuted(true)
+    setWatchPartyDebug(null)
   }
 
   async function joinWatchParty() {
@@ -492,6 +513,16 @@ export default function App() {
     setWatchPartyJoining(true)
     setWatchPartyTrackCount(0)
     setWatchPartyMuted(true)
+    setWatchPartyDebug({
+      peerId: '',
+      answerReceived: false,
+      answerApplied: false,
+      hostCandidates: 0,
+      hostCandidatesApplied: 0,
+      connectionState: 'new',
+      iceState: 'new',
+      gatherState: 'new',
+    })
     setWatchPartyStatus('Connexion à la séance...')
 
     try {
@@ -501,10 +532,17 @@ export default function App() {
       pendingViewerCandidatesRef.current = []
       appliedHostCandidateCountRef.current = 0
       pc.onconnectionstatechange = () => {
+        updateWatchPartyDebug({
+          connectionState: pc.connectionState,
+          iceState: pc.iceConnectionState,
+          gatherState: pc.iceGatheringState,
+        })
         if (pc.connectionState === 'checking') setWatchPartyStatus('Connexion video en cours... ca peut prendre quelques secondes.')
         if (pc.connectionState === 'connected') setWatchPartyStatus('Connecte a la seance.')
         if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion bloquee. Relance Rejoindre ou change de reseau.')
       }
+      pc.oniceconnectionstatechange = () => updateWatchPartyDebug({ iceState: pc.iceConnectionState })
+      pc.onicegatheringstatechange = () => updateWatchPartyDebug({ gatherState: pc.iceGatheringState })
       pc.onicecandidate = event => {
         if (!event.candidate) return
         const peerId = viewerPeerIdRef.current
@@ -542,6 +580,7 @@ export default function App() {
         offer: JSON.stringify(pc.localDescription),
       })
       viewerPeerIdRef.current = data.peer.id
+      updateWatchPartyDebug({ peerId: data.peer.id })
       pendingViewerCandidatesRef.current.forEach(candidate => sendWatchPartyCandidate(data.peer.id, 'viewer', candidate))
       pendingViewerCandidatesRef.current = []
 
@@ -552,14 +591,24 @@ export default function App() {
           const peerData = await api('GET', `/auth/watchparty?peerId=${encodeURIComponent(viewerPeerIdRef.current)}`)
           if (peerData.peer?.answer && !answerApplied) {
             answerApplied = true
+            updateWatchPartyDebug({ answerReceived: true })
             await pc.setRemoteDescription(JSON.parse(peerData.peer.answer))
+            updateWatchPartyDebug({ answerApplied: true })
             setWatchPartyRole('viewer')
+            setWatchPartyJoining(false)
             setWatchPartyStatus('Connexion reseau en cours...')
           }
 
           if (peerData.peer?.host_candidates) {
             const hostCandidates = parseCandidates(peerData.peer.host_candidates)
             appliedHostCandidateCountRef.current = await addRemoteCandidates(pc, hostCandidates, appliedHostCandidateCountRef.current)
+            updateWatchPartyDebug({
+              hostCandidates: hostCandidates.length,
+              hostCandidatesApplied: appliedHostCandidateCountRef.current,
+              connectionState: pc.connectionState,
+              iceState: pc.iceConnectionState,
+              gatherState: pc.iceGatheringState,
+            })
           }
 
           if (pc.connectionState === 'connected') {
@@ -1406,6 +1455,11 @@ export default function App() {
                       <div className="watchparty-note">
                         Pistes recues: {watchPartyTrackCount}. Si ca reste a 2 mais que l'image ne part pas, la source partagee peut etre protegee ou bloquee par le navigateur.
                       </div>
+                      {watchPartyDebug && (
+                        <div className="watchparty-note watchparty-debug">
+                          Debug spectateur: {formatWatchPartyDebug()}
+                        </div>
+                      )}
                     </>
                   )}
                   <div className="watchparty-steps">
@@ -1816,6 +1870,7 @@ const globalCss = `
           .watchparty-stage video {width:100%; height:100%; object-fit:contain; background:#000; }
           .watchparty-placeholder {height:100%; width:100%; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--text2); padding:24px; font-size:15px; }
           .watchparty-note {border:1px solid var(--border); background:var(--bg3); border-radius:10px; color:var(--text); padding:10px 12px; margin-bottom:12px; font-size:13px; }
+          .watchparty-debug {font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:12px; color:var(--text2); overflow-wrap:anywhere; }
           .watchparty-steps {display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
           .watchparty-steps span {background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); font-size:13px; text-align:center; }
 
