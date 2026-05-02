@@ -277,6 +277,12 @@ export default function App() {
   }, [watchPartyPeers, watchPartyRole, watchPartySession])
 
   useEffect(() => {
+    if (hostVideoRef.current && hostStreamRef.current) {
+      hostVideoRef.current.srcObject = hostStreamRef.current
+    }
+  }, [watchPartyRole, watchPartySession])
+
+  useEffect(() => {
     if (remoteVideoRef.current && remoteStreamRef.current) {
       remoteVideoRef.current.srcObject = remoteStreamRef.current
     }
@@ -1208,9 +1214,9 @@ export default function App() {
             <div className="watchparty-page">
               <div className="watchparty-hero">
                 <div>
-                  <div className="watchparty-kicker">Zone secrète</div>
-                  <h1>Watch Party</h1>
-                  <p>Partage ton écran et ton audio avec les membres de la room. Choisis plutôt un onglet Chrome avec audio pour maximiser les chances que le son passe.</p>
+                <div className="watchparty-kicker">Zone secrète</div>
+                <h1>Watch Party</h1>
+                  <p>Partage ton écran et ton audio avec les membres de la room {currentRoom.name}. Choisis plutôt un onglet Chrome avec audio pour maximiser les chances que le son passe.</p>
                 </div>
                 <div className={`watchparty-status ${watchPartySession ? 'active' : ''}`}>
                   {watchPartySession ? `Session active · ${watchPartyViewerCount} connecté${watchPartyViewerCount > 1 ? 's' : ''}` : 'Session inactive'}
@@ -1229,13 +1235,18 @@ export default function App() {
                 </div>
                 <div className="watchparty-card">
                   <h2>Accès spectateurs</h2>
-                  <p>Si une session est active, les membres qui ont le mot de passe secret peuvent rejoindre depuis cette page.</p>
+                  <p>Session cherchée dans la room {currentRoom.name}. Si ton bouton reste gris, vérifie que tu es dans la même room que l’hôte.</p>
                   {watchPartyRole === 'viewer' ? (
                     <div className="watchparty-code">Connecté</div>
                   ) : (
-                    <button onClick={joinWatchParty} disabled={!watchPartySession || watchPartyJoining || watchPartyRole === 'host'}>
-                      {watchPartyJoining ? 'Connexion...' : 'Rejoindre'}
-                    </button>
+                    <div className="watchparty-actions">
+                      <button onClick={joinWatchParty} disabled={!watchPartySession || watchPartyJoining || watchPartyRole === 'host'}>
+                        {watchPartyJoining ? 'Connexion...' : watchPartySession ? 'Rejoindre' : 'Aucune session'}
+                      </button>
+                      {watchPartyRole !== 'host' && (
+                        <button className="watchparty-secondary" onClick={loadWatchParty}>Rafraîchir</button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="watchparty-card wide">
@@ -1649,6 +1660,9 @@ const globalCss = `
           .watchparty-card button:disabled {background:var(--bg3); border-color:var(--border); color:var(--text2); cursor:not-allowed; opacity:0.58; transform:none; }
           .watchparty-card button.watchparty-danger {background:transparent; border-color:var(--red); color:var(--red); }
           .watchparty-card button.watchparty-danger:hover {background:rgba(255,90,90,0.12); }
+          .watchparty-actions {display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+          .watchparty-card button.watchparty-secondary {background:transparent; border-color:var(--border); color:var(--text); }
+          .watchparty-card button.watchparty-secondary:hover:not(:disabled) {background:var(--bg3); }
           .watchparty-code {display:inline-flex; background:var(--bg3); border:1px solid var(--gold); color:var(--gold); border-radius:10px; padding:10px 14px; font-size:14px; font-weight:900; letter-spacing:1px; }
           .watchparty-stage {position:relative; width:100%; aspect-ratio:16/9; min-height:260px; background:#050505; border:1px solid var(--border); border-radius:14px; overflow:hidden; margin:4px 0 14px; display:flex; align-items:center; justify-content:center; }
           .watchparty-stage video {width:100%; height:100%; object-fit:contain; background:#000; }
