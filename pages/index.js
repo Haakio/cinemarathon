@@ -266,9 +266,16 @@ export default function App() {
   useEffect(() => {
     if (!secretUnlocked || page !== 'secret') return
     loadWatchParty()
-    const timer = setInterval(loadWatchParty, 2500)
+    const timer = setInterval(loadWatchParty, watchPartyRole === 'host' ? 1000 : 2500)
     return () => clearInterval(timer)
-  }, [secretUnlocked, page, loadWatchParty])
+  }, [secretUnlocked, page, loadWatchParty, watchPartyRole])
+
+  useEffect(() => {
+    if (watchPartyRole !== 'host' || !hostStreamRef.current || !watchPartySession) return
+    loadWatchParty()
+    const timer = setInterval(loadWatchParty, 1000)
+    return () => clearInterval(timer)
+  }, [watchPartyRole, watchPartySession, loadWatchParty])
 
   useEffect(() => {
     if (watchPartyRole !== 'host' || !hostStreamRef.current || !watchPartySession) return
@@ -298,13 +305,12 @@ export default function App() {
           if (!peer.answer && pc.localDescription?.type !== 'answer') {
             const answer = await pc.createAnswer()
             await pc.setLocalDescription(answer)
-            setWatchPartyStatus('Preparation de la connexion spectateur...')
-            await waitForIceGathering(pc)
             await api('POST', '/auth/watchparty', {
               action: 'answer',
               peerId: peer.id,
               answer: JSON.stringify(pc.localDescription),
             })
+            setWatchPartyStatus('Reponse envoyee au spectateur. Connexion en cours...')
           }
 
           setWatchPartyViewerCount(count => Math.max(count, Object.keys(hostPeerConnectionsRef.current).length))
@@ -564,10 +570,10 @@ export default function App() {
               playWatchPartyVideo(false)
             }, 250)
             setWatchPartyJoining(false)
-          } else if (Date.now() - startedAt > 45000) {
+          } else if (Date.now() - startedAt > 120000) {
             clearInterval(timer)
             setWatchPartyJoining(false)
-            setWatchPartyStatus(`Connexion trop longue. Relance Rejoindre. ${getConnectionDebug(pc)}`)
+            setWatchPartyStatus(`Connexion trop longue. Garde l'onglet Cinémarathon ouvert côté hôte puis relance Rejoindre. ${getConnectionDebug(pc)}`)
           }
         } catch {
           clearInterval(timer)
