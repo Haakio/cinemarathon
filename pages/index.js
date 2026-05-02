@@ -98,6 +98,27 @@ function countSdpCandidates(description) {
   return (sdp || '').split('\n').filter(line => line.startsWith('a=candidate:')).length
 }
 
+async function tuneSender(sender) {
+  const parameters = sender.getParameters?.()
+  if (!parameters) return
+
+  if (sender.track?.kind === 'video') {
+    parameters.degradationPreference = 'maintain-resolution'
+    parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}]
+    parameters.encodings[0].maxBitrate = 8000000
+    parameters.encodings[0].maxFramerate = 30
+  }
+
+  if (sender.track?.kind === 'audio') {
+    parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}]
+    parameters.encodings[0].maxBitrate = 192000
+  }
+
+  try {
+    await sender.setParameters(parameters)
+  } catch { }
+}
+
 // ─── App ───────────────────────────────────────────────────
 export default function App() {
   const [mounted, setMounted] = useState(false)
@@ -319,7 +340,10 @@ export default function App() {
               if (isWatchPartyConnected(pc)) setWatchPartyStatus('Un spectateur est connecte a la seance.')
               if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion spectateur instable. Il peut reessayer de rejoindre.')
             }
-            hostStreamRef.current.getTracks().forEach(track => pc.addTrack(track, hostStreamRef.current))
+            for (const track of hostStreamRef.current.getTracks()) {
+              const sender = pc.addTrack(track, hostStreamRef.current)
+              await tuneSender(sender)
+            }
             await pc.setRemoteDescription(JSON.parse(peer.offer))
           }
 
@@ -510,9 +534,21 @@ export default function App() {
     try {
       setWatchPartyStatus('Choisis l’écran ou l’onglet à partager.')
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 30 },
+        },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 2,
+          sampleRate: 48000,
+        },
       })
+      stream.getVideoTracks().forEach(track => { track.contentHint = 'detail' })
+      stream.getAudioTracks().forEach(track => { track.contentHint = 'music' })
       hostStreamRef.current = stream
       if (hostVideoRef.current && hostVideoRef.current.srcObject !== stream) hostVideoRef.current.srcObject = stream
       const data = await api('POST', '/auth/watchparty', { action: 'start', roomId: currentRoomId })
