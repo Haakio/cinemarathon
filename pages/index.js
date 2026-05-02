@@ -92,6 +92,9 @@ export default function App() {
   const [patchnotesOpen, setPatchnotesOpen] = useState(false)
   const [availability, setAvailability] = useState([])
   const [availabilityPreference, setAvailabilityPreference] = useState('any')
+  const [secretUnlocked, setSecretUnlocked] = useState(false)
+  const [secretPassword, setSecretPassword] = useState('')
+  const [secretError, setSecretError] = useState('')
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -235,6 +238,17 @@ export default function App() {
   function closePatchnotes() {
     if (currentUser?.id) savePatchPref(currentUser.id)
     setPatchnotesOpen(false)
+  }
+
+  function unlockSecret() {
+    if (secretPassword === 'azertypoppop') {
+      setSecretUnlocked(true)
+      setSecretPassword('')
+      setSecretError('')
+      return
+    }
+
+    setSecretError('Mot de passe incorrect.')
   }
 
   function setChatPreference(enabled) {
@@ -623,7 +637,7 @@ export default function App() {
 
       {/* NAV */}
       <nav className="nav">
-        {[['liste', '🎬 Liste'], ['regarder', '▶ Regarder'], ['vu', '✓ Déjà vu'], ['dispos', '◷ Dispos'], ['admin', '⚙ Admin']].map(([id, label]) => (
+        {[['liste', '🎬 Liste'], ['regarder', '▶ Regarder'], ['vu', '✓ Déjà vu'], ['dispos', '◷ Dispos'], ['secret', '◆ Secret'], ['admin', '⚙ Admin']].map(([id, label]) => (
           <button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>{label}</button>
         ))}
       </nav>
@@ -973,6 +987,62 @@ export default function App() {
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {page === 'secret' && (
+        <div className="page">
+          {!secretUnlocked ? (
+            <div className="secret-lock">
+              <div className="secret-lock-icon">◆</div>
+              <h1>Zone secrète</h1>
+              <p>Entre le mot de passe pour accéder au Watch Party.</p>
+              <div className="secret-form">
+                <input
+                  type="password"
+                  value={secretPassword}
+                  onChange={e => setSecretPassword(e.target.value)}
+                  placeholder="Mot de passe"
+                  onKeyDown={e => e.key === 'Enter' && unlockSecret()}
+                />
+                <button onClick={unlockSecret}>Entrer</button>
+              </div>
+              {secretError && <div className="secret-error">{secretError}</div>}
+            </div>
+          ) : (
+            <div className="watchparty-page">
+              <div className="watchparty-hero">
+                <div>
+                  <div className="watchparty-kicker">Zone secrète</div>
+                  <h1>Watch Party</h1>
+                  <p>Prépare ici la future séance privée : partage d’écran, audio, statut de session et accès par code.</p>
+                </div>
+                <button className="watchparty-status">Session inactive</button>
+              </div>
+
+              <div className="watchparty-grid">
+                <div className="watchparty-card">
+                  <h2>Démarrer une session</h2>
+                  <p>Le bouton final demandera l’autorisation du navigateur pour capturer ton écran et, si possible, l’audio.</p>
+                  <button disabled>Démarrer bientôt</button>
+                </div>
+                <div className="watchparty-card">
+                  <h2>Accès spectateurs</h2>
+                  <p>Quand une session sera active, les autres verront ici l’état de la séance et pourront rejoindre avec le code secret.</p>
+                  <div className="watchparty-code">azertypoppop</div>
+                </div>
+                <div className="watchparty-card wide">
+                  <h2>Plan technique</h2>
+                  <div className="watchparty-steps">
+                    <span>1. Démarrer la session</span>
+                    <span>2. Partager écran + audio</span>
+                    <span>3. Les membres rejoignent</span>
+                    <span>4. Fin de session quand tu coupes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1335,6 +1405,32 @@ const globalCss = `
           .availability-rank span {color:var(--text2); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
           .availability-rank b, .availability-person b {background:var(--gold); color:#000; border-radius:999px; padding:5px 9px; font-size:12px; white-space:nowrap; }
 
+          /* SECRET / WATCH PARTY */
+          .secret-lock {max-width:430px; margin:70px auto 0; background:var(--bg2); border:1px solid var(--border); border-radius:18px; padding:34px; text-align:center; box-shadow:0 24px 80px rgba(0,0,0,0.55); }
+          .secret-lock-icon {width:52px; height:52px; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; background:var(--gold); color:#000; font-size:20px; }
+          .secret-lock h1 {font-family:'Playfair Display',serif; color:var(--gold); font-size:32px; margin-bottom:8px; }
+          .secret-lock p {color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:20px; }
+          .secret-form {display:flex; gap:10px; }
+          .secret-form input {flex:1; min-width:0; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px 14px; color:var(--text); outline:none; font-size:14px; }
+          .secret-form input:focus {border-color:var(--gold); }
+          .secret-form button {background:var(--gold); border:none; color:#000; border-radius:10px; padding:0 18px; font-size:13px; font-weight:900; cursor:pointer; }
+          .secret-error {margin-top:12px; color:var(--red); font-size:13px; }
+          .watchparty-page {display:flex; flex-direction:column; gap:22px; }
+          .watchparty-hero {display:flex; justify-content:space-between; align-items:center; gap:18px; background:linear-gradient(135deg,rgba(201,168,76,0.16),rgba(17,17,17,1)); border:1px solid var(--border); border-radius:18px; padding:28px; }
+          .watchparty-kicker {font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+          .watchparty-hero h1 {font-family:'Playfair Display',serif; font-size:38px; color:var(--gold); margin-bottom:8px; }
+          .watchparty-hero p {color:var(--text2); max-width:620px; font-size:14px; line-height:1.55; }
+          .watchparty-status {background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:999px; padding:10px 16px; font-size:13px; font-weight:800; white-space:nowrap; }
+          .watchparty-grid {display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+          .watchparty-card {background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:22px; }
+          .watchparty-card.wide {grid-column:1 / -1; }
+          .watchparty-card h2 {font-family:'Playfair Display',serif; color:var(--gold); font-size:22px; margin-bottom:10px; }
+          .watchparty-card p {color:var(--text2); font-size:14px; line-height:1.5; margin-bottom:16px; }
+          .watchparty-card button {background:var(--bg3); border:1px solid var(--border); color:var(--text2); border-radius:10px; padding:12px 14px; font-weight:800; cursor:not-allowed; }
+          .watchparty-code {display:inline-flex; background:var(--bg3); border:1px solid var(--gold); color:var(--gold); border-radius:10px; padding:10px 14px; font-size:14px; font-weight:900; letter-spacing:1px; }
+          .watchparty-steps {display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+          .watchparty-steps span {background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); font-size:13px; text-align:center; }
+
           /* ADMIN */
           .admin-grid {display:grid; grid-template-columns:1fr 1fr; gap:24px; }
           .admin-card {background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:28px; }
@@ -1455,6 +1551,11 @@ const globalCss = `
           .availability-hero {flex-direction:column; padding:18px; }
           .availability-grid {grid-template-columns:1fr; }
           .availability-board {grid-template-columns:1fr; }
+          .secret-form {flex-direction:column; }
+          .secret-form button {padding:12px; }
+          .watchparty-hero {flex-direction:column; align-items:flex-start; }
+          .watchparty-grid {grid-template-columns:1fr; }
+          .watchparty-steps {grid-template-columns:1fr; }
           .nav {padding:0 8px; }
           .nav-btn {padding:14px 10px; font-size:10px; letter-spacing:1px; }
           .page {padding:20px 16px; }
