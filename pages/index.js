@@ -56,7 +56,10 @@ async function getRtcConfig() {
   if (cachedRtcConfig) return cachedRtcConfig
   try {
     const data = await api('GET', '/auth/watchparty/ice')
-    cachedRtcConfig = { iceServers: data.iceServers || fallbackRtcConfig.iceServers }
+    cachedRtcConfig = {
+      iceServers: data.iceServers || fallbackRtcConfig.iceServers,
+      iceTransportPolicy: data.iceTransportPolicy || 'all',
+    }
   } catch {
     cachedRtcConfig = fallbackRtcConfig
   }
@@ -88,6 +91,11 @@ function parseCandidates(value) {
   } catch {
     return []
   }
+}
+
+function countSdpCandidates(description) {
+  const sdp = typeof description === 'string' ? description : description?.sdp
+  return (sdp || '').split('\n').filter(line => line.startsWith('a=candidate:')).length
 }
 
 // ─── App ───────────────────────────────────────────────────
@@ -304,6 +312,9 @@ export default function App() {
             pc.onicecandidate = event => {
               if (event.candidate) sendWatchPartyCandidate(peer.id, 'host', event.candidate)
             }
+            pc.onicecandidateerror = event => {
+              setWatchPartyStatus(`Erreur TURN/STUN hote: ${event.errorText || event.errorCode}`)
+            }
             pc.onconnectionstatechange = () => {
               if (pc.connectionState === 'connected') setWatchPartyStatus('Un spectateur est connecte a la seance.')
               if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion spectateur instable. Il peut reessayer de rejoindre.')
@@ -326,7 +337,7 @@ export default function App() {
               peerId: peer.id,
               answer: JSON.stringify(pc.localDescription),
             })
-            setWatchPartyStatus('Reponse complete envoyee au spectateur.')
+            setWatchPartyStatus(`Reponse complete envoyee au spectateur (${countSdpCandidates(pc.localDescription)} candidats).`)
           }
 
           setWatchPartyViewerCount(count => Math.max(count, Object.keys(hostPeerConnectionsRef.current).length))
@@ -441,8 +452,10 @@ export default function App() {
       `peer=${watchPartyDebug.peerId || '-'}`,
       `answer recue=${bool(watchPartyDebug.answerReceived)}`,
       `answer appliquee=${bool(watchPartyDebug.answerApplied)}`,
+      `answer cand=${watchPartyDebug.answerCandidates ?? 0}`,
       `candidats hote=${watchPartyDebug.hostCandidates ?? 0}`,
       `appliques=${watchPartyDebug.hostCandidatesApplied ?? 0}`,
+      `turn=${watchPartyDebug.relayMode ? 'relay' : 'auto'}`,
       `webrtc=${watchPartyDebug.connectionState || '-'}`,
       `ice=${watchPartyDebug.iceState || '-'}`,
       `gather=${watchPartyDebug.gatherState || '-'}`,
@@ -532,8 +545,10 @@ export default function App() {
       peerId: '',
       answerReceived: false,
       answerApplied: false,
+      answerCandidates: 0,
       hostCandidates: 0,
       hostCandidatesApplied: 0,
+      relayMode: false,
       connectionState: 'new',
       iceState: 'new',
       gatherState: 'new',
@@ -542,7 +557,9 @@ export default function App() {
 
     try {
       viewerPcRef.current?.close()
-      const pc = new RTCPeerConnection(await getRtcConfig())
+      const config = await getRtcConfig()
+      updateWatchPartyDebug({ relayMode: config.iceTransportPolicy === 'relay' })
+      const pc = new RTCPeerConnection(config)
       viewerPcRef.current = pc
       pendingViewerCandidatesRef.current = []
       appliedHostCandidateCountRef.current = 0
@@ -558,6 +575,9 @@ export default function App() {
       }
       pc.oniceconnectionstatechange = () => updateWatchPartyDebug({ iceState: pc.iceConnectionState })
       pc.onicegatheringstatechange = () => updateWatchPartyDebug({ gatherState: pc.iceGatheringState })
+      pc.onicecandidateerror = event => {
+        setWatchPartyStatus(`Erreur TURN/STUN spectateur: ${event.errorText || event.errorCode}`)
+      }
       pc.onicecandidate = event => {
         if (!event.candidate) return
         const peerId = viewerPeerIdRef.current
@@ -606,8 +626,12 @@ export default function App() {
           const peerData = await api('GET', `/auth/watchparty?peerId=${encodeURIComponent(viewerPeerIdRef.current)}`)
           if (peerData.peer?.answer && !answerApplied) {
             answerApplied = true
-            updateWatchPartyDebug({ answerReceived: true })
-            await pc.setRemoteDescription(JSON.parse(peerData.peer.answer))
+            const answerDescription = JSON.parse(peerData.peer.answer)
+            updateWatchPartyDebug({
+              answerReceived: true,
+              answerCandidates: countSdpCandidates(answerDescription),
+            })
+            await pc.setRemoteDescription(answerDescription)
             updateWatchPartyDebug({ answerApplied: true })
             setWatchPartyRole('viewer')
             setWatchPartyJoining(false)

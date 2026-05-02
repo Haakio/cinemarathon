@@ -11,6 +11,7 @@ function parseTurnUrls(value) {
     .split(',')
     .map(url => url.trim())
     .filter(Boolean)
+    .map(url => url.startsWith('turn:') || url.startsWith('turns:') ? url : `turn:${url}`)
 }
 
 export default async function handler(req, res) {
@@ -21,7 +22,9 @@ export default async function handler(req, res) {
   const turnUrls = parseTurnUrls(process.env.TURN_URLS)
   const iceServers = [...fallbackIceServers]
 
-  if (turnUrls.length && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
+  const turnEnabled = turnUrls.length > 0 && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL
+
+  if (turnEnabled) {
     iceServers.push({
       urls: turnUrls,
       username: process.env.TURN_USERNAME,
@@ -31,6 +34,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     iceServers,
-    turnEnabled: turnUrls.length > 0,
+    iceTransportPolicy: turnEnabled ? 'relay' : 'all',
+    turnEnabled,
   })
 }
