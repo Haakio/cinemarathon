@@ -14,10 +14,38 @@ function parseTurnUrls(value) {
     .map(url => url.startsWith('turn:') || url.startsWith('turns:') ? url : `turn:${url}`)
 }
 
+async function getMeteredIceServers() {
+  if (!process.env.METERED_TURN_API_URL) return null
+
+  const response = await fetch(process.env.METERED_TURN_API_URL)
+  if (!response.ok) throw new Error('Metered TURN unavailable')
+
+  const iceServers = await response.json()
+  if (!Array.isArray(iceServers) || iceServers.length === 0) {
+    throw new Error('Metered TURN response invalid')
+  }
+
+  return iceServers
+}
+
 export default async function handler(req, res) {
   const user = requireAuth(req)
   if (!user) return res.status(401).json({ error: 'Non autorise' })
   if (req.method !== 'GET') return res.status(405).end()
+
+  try {
+    const meteredIceServers = await getMeteredIceServers()
+    if (meteredIceServers) {
+      return res.status(200).json({
+        iceServers: meteredIceServers,
+        iceTransportPolicy: 'relay',
+        turnEnabled: true,
+        provider: 'metered',
+      })
+    }
+  } catch (err) {
+    console.error(err)
+  }
 
   const turnUrls = parseTurnUrls(process.env.TURN_URLS)
   const iceServers = [...fallbackIceServers]
@@ -36,5 +64,6 @@ export default async function handler(req, res) {
     iceServers,
     iceTransportPolicy: turnEnabled ? 'relay' : 'all',
     turnEnabled,
+    provider: turnEnabled ? 'static' : 'fallback',
   })
 }
