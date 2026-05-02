@@ -298,6 +298,8 @@ export default function App() {
           if (!peer.answer && pc.localDescription?.type !== 'answer') {
             const answer = await pc.createAnswer()
             await pc.setLocalDescription(answer)
+            setWatchPartyStatus('Preparation de la connexion spectateur...')
+            await waitForIceGathering(pc)
             await api('POST', '/auth/watchparty', {
               action: 'answer',
               peerId: peer.id,
@@ -401,6 +403,11 @@ export default function App() {
     })
   }
 
+  function getConnectionDebug(pc) {
+    if (!pc) return ''
+    return `webrtc=${pc.connectionState}, ice=${pc.iceConnectionState}, gather=${pc.iceGatheringState}`
+  }
+
   async function sendWatchPartyCandidate(peerId, side, candidate) {
     if (!peerId || !candidate) return
     try {
@@ -410,7 +417,9 @@ export default function App() {
         side,
         candidate: JSON.stringify(candidate),
       })
-    } catch { }
+    } catch (e) {
+      setWatchPartyStatus('Setup Watch Party incomplet: relance /api/setup sur Vercel.')
+    }
   }
 
   async function addRemoteCandidates(pc, candidates, startIndex) {
@@ -518,6 +527,8 @@ export default function App() {
       }
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
+      setWatchPartyStatus('Preparation de la connexion reseau...')
+      await waitForIceGathering(pc)
       const data = await api('POST', '/auth/watchparty', {
         action: 'join',
         roomId: currentRoomId,
@@ -556,7 +567,7 @@ export default function App() {
           } else if (Date.now() - startedAt > 45000) {
             clearInterval(timer)
             setWatchPartyJoining(false)
-            setWatchPartyStatus('Connexion trop longue. Relance Rejoindre.')
+            setWatchPartyStatus(`Connexion trop longue. Relance Rejoindre. ${getConnectionDebug(pc)}`)
           }
         } catch {
           clearInterval(timer)
