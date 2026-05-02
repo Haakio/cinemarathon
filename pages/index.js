@@ -313,10 +313,10 @@ export default function App() {
               if (event.candidate) sendWatchPartyCandidate(peer.id, 'host', event.candidate)
             }
             pc.onicecandidateerror = event => {
-              setWatchPartyStatus(`Erreur TURN/STUN hote: ${event.errorText || event.errorCode}`)
+              if (!isWatchPartyConnected(pc)) setWatchPartyStatus(`Erreur TURN/STUN hote: ${event.errorText || event.errorCode}`)
             }
             pc.onconnectionstatechange = () => {
-              if (pc.connectionState === 'connected') setWatchPartyStatus('Un spectateur est connecte a la seance.')
+              if (isWatchPartyConnected(pc)) setWatchPartyStatus('Un spectateur est connecte a la seance.')
               if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion spectateur instable. Il peut reessayer de rejoindre.')
             }
             hostStreamRef.current.getTracks().forEach(track => pc.addTrack(track, hostStreamRef.current))
@@ -439,6 +439,22 @@ export default function App() {
   function getConnectionDebug(pc) {
     if (!pc) return ''
     return `webrtc=${pc.connectionState}, ice=${pc.iceConnectionState}, gather=${pc.iceGatheringState}`
+  }
+
+  function isWatchPartyConnected(pc) {
+    return pc?.connectionState === 'connected' || ['connected', 'completed'].includes(pc?.iceConnectionState)
+  }
+
+  function markWatchPartyConnected(pc) {
+    updateWatchPartyDebug({
+      connectionState: pc.connectionState,
+      iceState: pc.iceConnectionState,
+      gatherState: pc.iceGatheringState,
+    })
+    setWatchPartyRole('viewer')
+    setWatchPartyJoining(false)
+    setWatchPartyStatus('Connecte a la seance. Si la video ne part pas, clique sur Lancer la video.')
+    setTimeout(() => playWatchPartyVideo(false), 250)
   }
 
   function updateWatchPartyDebug(patch) {
@@ -570,13 +586,16 @@ export default function App() {
           gatherState: pc.iceGatheringState,
         })
         if (pc.connectionState === 'checking') setWatchPartyStatus('Connexion video en cours... ca peut prendre quelques secondes.')
-        if (pc.connectionState === 'connected') setWatchPartyStatus('Connecte a la seance.')
+        if (isWatchPartyConnected(pc)) markWatchPartyConnected(pc)
         if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion bloquee. Relance Rejoindre ou change de reseau.')
       }
-      pc.oniceconnectionstatechange = () => updateWatchPartyDebug({ iceState: pc.iceConnectionState })
+      pc.oniceconnectionstatechange = () => {
+        updateWatchPartyDebug({ iceState: pc.iceConnectionState })
+        if (isWatchPartyConnected(pc)) markWatchPartyConnected(pc)
+      }
       pc.onicegatheringstatechange = () => updateWatchPartyDebug({ gatherState: pc.iceGatheringState })
       pc.onicecandidateerror = event => {
-        setWatchPartyStatus(`Erreur TURN/STUN spectateur: ${event.errorText || event.errorCode}`)
+        if (!isWatchPartyConnected(pc)) setWatchPartyStatus(`Erreur TURN/STUN spectateur: ${event.errorText || event.errorCode}`)
       }
       pc.onicecandidate = event => {
         if (!event.candidate) return
@@ -650,14 +669,9 @@ export default function App() {
             })
           }
 
-          if (pc.connectionState === 'connected') {
+          if (isWatchPartyConnected(pc)) {
             clearInterval(timer)
-            setWatchPartyRole('viewer')
-            setWatchPartyStatus('Connecte a la seance. Si la video ne part pas, clique sur lecture.')
-            setTimeout(() => {
-              playWatchPartyVideo(false)
-            }, 250)
-            setWatchPartyJoining(false)
+            markWatchPartyConnected(pc)
           } else if (Date.now() - startedAt > 120000) {
             clearInterval(timer)
             setWatchPartyJoining(false)
