@@ -319,19 +319,14 @@ export default function App() {
           if (!peer.answer && pc.localDescription?.type !== 'answer') {
             const answer = await pc.createAnswer()
             await pc.setLocalDescription(answer)
-            await api('POST', '/auth/watchparty', {
-              action: 'answer',
-              peerId: peer.id,
-              answer: JSON.stringify(pc.localDescription),
-            })
-            setWatchPartyStatus('Reponse envoyee au spectateur. Collecte reseau en cours...')
+            setWatchPartyStatus('Preparation de la reponse reseau complete...')
             await waitForIceGathering(pc)
             await api('POST', '/auth/watchparty', {
               action: 'answer',
               peerId: peer.id,
               answer: JSON.stringify(pc.localDescription),
             })
-            setWatchPartyStatus('Reponse reseau complete envoyee au spectateur.')
+            setWatchPartyStatus('Reponse complete envoyee au spectateur.')
           }
 
           setWatchPartyViewerCount(count => Math.max(count, Object.keys(hostPeerConnectionsRef.current).length))
