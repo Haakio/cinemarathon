@@ -1,4 +1,5 @@
 import {
+  addWatchPartyCandidate,
   answerWatchPartyPeer,
   createWatchPartyPeer,
   endWatchPartySession,
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action, roomId = 'marvel', sessionId, peerId, offer, answer } = req.body
+    const { action, roomId = 'marvel', sessionId, peerId, offer, answer, side, candidate } = req.body
 
     try {
       if (action === 'start') {
@@ -71,6 +72,15 @@ export default async function handler(req, res) {
       if (action === 'answer') {
         if (!peerId || !answer) return res.status(400).json({ error: 'Peer et reponse requis' })
         await answerWatchPartyPeer(peerId, answer)
+        return res.status(200).json({ ok: true })
+      }
+
+      if (action === 'candidate') {
+        if (!peerId || !candidate || !['host', 'viewer'].includes(side)) {
+          return res.status(400).json({ error: 'Candidat invalide' })
+        }
+        const saved = await addWatchPartyCandidate(peerId, side, candidate)
+        if (!saved) return res.status(503).json({ error: 'Watch Party pas encore initialisee. Relancez le setup.' })
         return res.status(200).json({ ok: true })
       }
 

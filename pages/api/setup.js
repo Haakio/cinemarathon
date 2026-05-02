@@ -105,6 +105,8 @@ export default async function handler(req, res) {
         viewer_pseudo TEXT,
         offer TEXT NOT NULL,
         answer TEXT,
+        viewer_candidates TEXT DEFAULT '[]',
+        host_candidates TEXT DEFAULT '[]',
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -118,6 +120,8 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS platform TEXT DEFAULT ''`
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS watch_url TEXT DEFAULT ''`
     await sql`ALTER TABLE watched ADD COLUMN IF NOT EXISTS room_id TEXT DEFAULT 'marvel'`
+    await sql`ALTER TABLE watchparty_peers ADD COLUMN IF NOT EXISTS viewer_candidates TEXT DEFAULT '[]'`
+    await sql`ALTER TABLE watchparty_peers ADD COLUMN IF NOT EXISTS host_candidates TEXT DEFAULT '[]'`
     await sql`UPDATE watchlist SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE watched SET room_id = 'marvel' WHERE room_id IS NULL`
 

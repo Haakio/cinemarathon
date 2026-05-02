@@ -69,6 +69,14 @@ function waitForIceGathering(peerConnection) {
   })
 }
 
+function parseCandidates(value) {
+  try {
+    return JSON.parse(value || '[]')
+  } catch {
+    return []
+  }
+}
+
 // ─── App ───────────────────────────────────────────────────
 export default function App() {
   const [mounted, setMounted] = useState(false)
@@ -137,6 +145,9 @@ export default function App() {
   const viewerPcRef = useRef(null)
   const hostPeerConnectionsRef = useRef({})
   const viewerPeerIdRef = useRef(null)
+  const pendingViewerCandidatesRef = useRef([])
+  const appliedHostCandidateCountRef = useRef(0)
+  const appliedViewerCandidateCountsRef = useRef({})
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const [editingId, setEditingId] = useState(null)
@@ -264,25 +275,36 @@ export default function App() {
 
     async function answerPendingPeers() {
       for (const peer of watchPartyPeers) {
-        if (peer.answer || hostPeerConnectionsRef.current[peer.id]) continue
-
         try {
-          const pc = new RTCPeerConnection(rtcConfig)
-          hostPeerConnectionsRef.current[peer.id] = pc
-          pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'connected') setWatchPartyStatus('Un spectateur est connecte a la seance.')
-            if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion spectateur instable. Il peut reessayer de rejoindre.')
+          let pc = hostPeerConnectionsRef.current[peer.id]
+          if (!pc) {
+            pc = new RTCPeerConnection(rtcConfig)
+            hostPeerConnectionsRef.current[peer.id] = pc
+            pc.onicecandidate = event => {
+              if (event.candidate) sendWatchPartyCandidate(peer.id, 'host', event.candidate)
+            }
+            pc.onconnectionstatechange = () => {
+              if (pc.connectionState === 'connected') setWatchPartyStatus('Un spectateur est connecte a la seance.')
+              if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion spectateur instable. Il peut reessayer de rejoindre.')
+            }
+            hostStreamRef.current.getTracks().forEach(track => pc.addTrack(track, hostStreamRef.current))
+            await pc.setRemoteDescription(JSON.parse(peer.offer))
           }
-          hostStreamRef.current.getTracks().forEach(track => pc.addTrack(track, hostStreamRef.current))
-          await pc.setRemoteDescription(JSON.parse(peer.offer))
-          const answer = await pc.createAnswer()
-          await pc.setLocalDescription(answer)
-          await waitForIceGathering(pc)
-          await api('POST', '/auth/watchparty', {
-            action: 'answer',
-            peerId: peer.id,
-            answer: JSON.stringify(pc.localDescription),
-          })
+
+          const viewerCandidates = parseCandidates(peer.viewer_candidates)
+          const startIndex = appliedViewerCandidateCountsRef.current[peer.id] || 0
+          appliedViewerCandidateCountsRef.current[peer.id] = await addRemoteCandidates(pc, viewerCandidates, startIndex)
+
+          if (!peer.answer && pc.localDescription?.type !== 'answer') {
+            const answer = await pc.createAnswer()
+            await pc.setLocalDescription(answer)
+            await api('POST', '/auth/watchparty', {
+              action: 'answer',
+              peerId: peer.id,
+              answer: JSON.stringify(pc.localDescription),
+            })
+          }
+
           setWatchPartyViewerCount(count => Math.max(count, Object.keys(hostPeerConnectionsRef.current).length))
         } catch {
           delete hostPeerConnectionsRef.current[peer.id]
@@ -379,6 +401,27 @@ export default function App() {
     })
   }
 
+  async function sendWatchPartyCandidate(peerId, side, candidate) {
+    if (!peerId || !candidate) return
+    try {
+      await api('POST', '/auth/watchparty', {
+        action: 'candidate',
+        peerId,
+        side,
+        candidate: JSON.stringify(candidate),
+      })
+    } catch { }
+  }
+
+  async function addRemoteCandidates(pc, candidates, startIndex) {
+    for (let index = startIndex; index < candidates.length; index++) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(JSON.parse(candidates[index])))
+      } catch { }
+    }
+    return candidates.length
+  }
+
   async function startWatchParty() {
     if (!navigator.mediaDevices?.getDisplayMedia) {
       showToast('Partage écran indisponible sur ce navigateur.')
@@ -440,10 +483,21 @@ export default function App() {
       viewerPcRef.current?.close()
       const pc = new RTCPeerConnection(rtcConfig)
       viewerPcRef.current = pc
+      pendingViewerCandidatesRef.current = []
+      appliedHostCandidateCountRef.current = 0
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'checking') setWatchPartyStatus('Connexion video en cours... ca peut prendre quelques secondes.')
         if (pc.connectionState === 'connected') setWatchPartyStatus('Connecte a la seance.')
         if (['failed', 'disconnected'].includes(pc.connectionState)) setWatchPartyStatus('Connexion bloquee. Relance Rejoindre ou change de reseau.')
+      }
+      pc.onicecandidate = event => {
+        if (!event.candidate) return
+        const peerId = viewerPeerIdRef.current
+        if (peerId) {
+          sendWatchPartyCandidate(peerId, 'viewer', event.candidate)
+        } else {
+          pendingViewerCandidatesRef.current.push(event.candidate)
+        }
       }
       const remoteStream = new MediaStream()
       remoteStreamRef.current = remoteStream
@@ -464,7 +518,6 @@ export default function App() {
       }
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
-      await waitForIceGathering(pc)
       const data = await api('POST', '/auth/watchparty', {
         action: 'join',
         roomId: currentRoomId,
@@ -472,24 +525,38 @@ export default function App() {
         offer: JSON.stringify(pc.localDescription),
       })
       viewerPeerIdRef.current = data.peer.id
+      pendingViewerCandidatesRef.current.forEach(candidate => sendWatchPartyCandidate(data.peer.id, 'viewer', candidate))
+      pendingViewerCandidatesRef.current = []
 
       const startedAt = Date.now()
+      let answerApplied = false
       const timer = setInterval(async () => {
         try {
           const peerData = await api('GET', `/auth/watchparty?peerId=${encodeURIComponent(viewerPeerIdRef.current)}`)
-          if (peerData.peer?.answer) {
-            clearInterval(timer)
+          if (peerData.peer?.answer && !answerApplied) {
+            answerApplied = true
             await pc.setRemoteDescription(JSON.parse(peerData.peer.answer))
+            setWatchPartyRole('viewer')
+            setWatchPartyStatus('Connexion reseau en cours...')
+          }
+
+          if (peerData.peer?.host_candidates) {
+            const hostCandidates = parseCandidates(peerData.peer.host_candidates)
+            appliedHostCandidateCountRef.current = await addRemoteCandidates(pc, hostCandidates, appliedHostCandidateCountRef.current)
+          }
+
+          if (pc.connectionState === 'connected') {
+            clearInterval(timer)
             setWatchPartyRole('viewer')
             setWatchPartyStatus('Connecte a la seance. Si la video ne part pas, clique sur lecture.')
             setTimeout(() => {
               playWatchPartyVideo(false)
             }, 250)
             setWatchPartyJoining(false)
-          } else if (Date.now() - startedAt > 30000) {
+          } else if (Date.now() - startedAt > 45000) {
             clearInterval(timer)
             setWatchPartyJoining(false)
-            setWatchPartyStatus('Connexion trop longue. Réessaie.')
+            setWatchPartyStatus('Connexion trop longue. Relance Rejoindre.')
           }
         } catch {
           clearInterval(timer)
