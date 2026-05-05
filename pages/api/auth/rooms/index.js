@@ -58,7 +58,7 @@ export default async function handler(req, res) {
         joinCodeHash,
       }
       await createRoom(room)
-      return res.status(201).json({ id: room.id, name: room.name, slug: room.slug, created_by: room.createdBy })
+      return res.status(201).json({ id: room.id, name: room.name, slug: room.slug, created_by: room.createdBy, can_delete: true })
     } catch (err) {
       console.error(err)
       return res.status(500).json({ error: 'Erreur serveur' })

@@ -172,6 +172,7 @@ export default function App() {
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [patchnotesOpen, setPatchnotesOpen] = useState(false)
+  const [patchCloseReady, setPatchCloseReady] = useState(false)
   const [availability, setAvailability] = useState([])
   const [availabilityPreference, setAvailabilityPreference] = useState('any')
   const [secretUnlocked, setSecretUnlocked] = useState(false)
@@ -264,6 +265,13 @@ export default function App() {
       setPatchnotesOpen(true)
     }
   }, [authed, currentUser])
+
+  useEffect(() => {
+    if (!patchnotesOpen) return
+    setPatchCloseReady(false)
+    const timer = setTimeout(() => setPatchCloseReady(true), 5000)
+    return () => clearTimeout(timer)
+  }, [patchnotesOpen])
 
   const loadChat = useCallback(async () => {
     if (!authed || !chatEnabled || !currentRoomId) return
@@ -436,6 +444,7 @@ export default function App() {
   }
 
   function closePatchnotes() {
+    if (!patchCloseReady) return
     if (currentUser?.id) savePatchPref(currentUser.id)
     setPatchnotesOpen(false)
   }
@@ -1046,7 +1055,7 @@ export default function App() {
   const myWatchEntry = currentItem ? watched.find(w => w.item_id === currentItem.id && w.user_id === currentUser?.id) : null
   const anySeen = currentItem ? seenItemIds.includes(currentItem.id) : false
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
-  const canDeleteCurrentRoom = currentRoom.id !== 'marvel' && (currentRoom.created_by === currentUser?.id || isAdmin)
+  const canDeleteCurrentRoom = currentRoom.id !== 'marvel' && (currentRoom.can_delete || currentRoom.created_by === currentUser?.id || isAdmin)
   const cinemaDays = mounted ? getCinemaDays() : []
   const availabilityBySlot = availability.reduce((acc, entry) => {
     const key = `${entry.day_key}|${entry.slot_key}`
@@ -1724,6 +1733,7 @@ export default function App() {
             <ul>
               {patchnotes.items.map(item => <li key={item}>{item}</li>)}
             </ul>
+            {!patchCloseReady && <div className="patch-wait">Fermeture possible dans 5 secondes.</div>}
             <button onClick={closePatchnotes}>J’ai vu</button>
           </div>
         </div>
@@ -2145,6 +2155,7 @@ const globalCss = `
           .patch-box p {color:var(--text2); font-size:14px; line-height:1.55; margin-bottom:16px; }
           .patch-box ul {display:flex; flex-direction:column; gap:9px; margin:0 0 22px 18px; color:var(--text); font-size:14px; line-height:1.45; }
           .patch-box li::marker {color:var(--gold); }
+          .patch-wait {margin:-8px 0 14px; color:var(--text2); font-size:12px; text-align:center; }
           .patch-box button {width:100%; background:var(--gold); border:1px solid var(--gold); color:#000; border-radius:10px; padding:12px; font-size:13px; font-weight:900; cursor:pointer; }
 
           /* FEEDBACK */
