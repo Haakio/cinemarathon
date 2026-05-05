@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { addRoomMember, createRoom, deleteRoom, getRoomById, getRoomByName, getRooms, updateRoomCode } from '../../../../lib/db'
+import { addRoomMember, createRoom, deleteRoom, getRoomById, getRoomByName, getRoomMembers, getRooms, hasRoomAccess, removeRoomMember, updateRoomCode } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -19,6 +19,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
+      if (req.query.membersRoomId) {
+        const roomId = String(req.query.membersRoomId)
+        if (!(await hasRoomAccess(roomId, user.id))) return res.status(403).json({ error: 'Acces refuse' })
+        const members = await getRoomMembers(roomId)
+        return res.status(200).json(members)
+      }
+
       const rooms = await getRooms(user.id)
       return res.status(200).json(rooms)
     } catch (err) {
@@ -28,11 +35,40 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action = 'create', name, code } = req.body
-    if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+    const { action = 'create', name, code, roomId, targetUserId } = req.body
 
     try {
+      if (action === 'leave') {
+        if (!roomId) return res.status(400).json({ error: 'Room requise' })
+        if (roomId === 'marvel') return res.status(400).json({ error: 'Impossible de quitter Marvel' })
+
+        const room = await getRoomById(roomId)
+        if (!room) return res.status(404).json({ error: 'Room introuvable' })
+        if (room.created_by === user.id) return res.status(400).json({ error: 'Le createur doit supprimer la room' })
+        if (!(await hasRoomAccess(roomId, user.id))) return res.status(403).json({ error: 'Acces refuse' })
+
+        await removeRoomMember(roomId, user.id)
+        return res.status(200).json({ ok: true })
+      }
+
+      if (action === 'kick') {
+        if (!roomId || !targetUserId) return res.status(400).json({ error: 'Membre requis' })
+        if (roomId === 'marvel') return res.status(400).json({ error: 'Impossible de modifier Marvel' })
+
+        const room = await getRoomById(roomId)
+        if (!room) return res.status(404).json({ error: 'Room introuvable' })
+
+        const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
+        const canKick = room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo)
+        if (!canKick) return res.status(403).json({ error: 'Seul le createur peut retirer un membre' })
+        if (targetUserId === room.created_by) return res.status(400).json({ error: 'Impossible de retirer le createur' })
+
+        await removeRoomMember(roomId, targetUserId)
+        return res.status(200).json({ ok: true })
+      }
+
       if (action === 'join') {
+        if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
         if (!code?.trim()) return res.status(400).json({ error: 'Code requis' })
         const room = await getRoomByName(name.trim())
         if (!room) return res.status(404).json({ error: 'Room introuvable' })
@@ -45,6 +81,7 @@ export default async function handler(req, res) {
         return res.status(200).json(room)
       }
 
+      if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
       if (!code?.trim() || code.trim().length < 3) {
         return res.status(400).json({ error: 'Code requis (min 3 caracteres)' })
       }

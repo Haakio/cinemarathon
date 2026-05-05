@@ -136,6 +136,7 @@ export default function App() {
   const [roomJoinName, setRoomJoinName] = useState('')
   const [roomJoinCode, setRoomJoinCode] = useState('')
   const [roomManageCode, setRoomManageCode] = useState('')
+  const [roomMembers, setRoomMembers] = useState([])
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
   const [roomMsg, setRoomMsg] = useState('')
@@ -273,6 +274,22 @@ export default function App() {
     const timer = setTimeout(() => setPatchCloseReady(true), 5000)
     return () => clearTimeout(timer)
   }, [patchnotesOpen])
+
+  useEffect(() => {
+    const room = rooms.find(entry => entry.id === currentRoomId)
+    const canManage = room && room.id !== 'marvel' && (room.can_delete || room.created_by === currentUser?.id || isAdmin)
+    if (!roomPanelOpen || !canManage) {
+      setRoomMembers([])
+      return
+    }
+
+    let cancelled = false
+    api('GET', `/auth/rooms?membersRoomId=${encodeURIComponent(currentRoomId)}`)
+      .then(members => { if (!cancelled) setRoomMembers(members) })
+      .catch(() => { if (!cancelled) setRoomMembers([]) })
+
+    return () => { cancelled = true }
+  }, [roomPanelOpen, currentRoomId, rooms, currentUser?.id, isAdmin])
 
   const loadChat = useCallback(async () => {
     if (!authed || !chatEnabled || !currentRoomId) return
@@ -437,6 +454,7 @@ export default function App() {
     setCurrentRoomId(roomId)
     saveRoom(roomId)
     setWatchIdx(0)
+    setRoomMembers([])
     cancelEdit()
   }
 
@@ -1010,6 +1028,40 @@ export default function App() {
     }
   }
 
+  async function leaveCurrentRoom() {
+    const room = rooms.find(entry => entry.id === currentRoomId)
+    if (!room || room.id === 'marvel' || canDeleteCurrentRoom) return
+
+    const ok = window.confirm(`Quitter la room "${room.name}" ?`)
+    if (!ok) return
+
+    try {
+      await api('POST', '/auth/rooms', { action: 'leave', roomId: room.id })
+      const nextRooms = rooms.filter(entry => entry.id !== room.id)
+      setRooms(nextRooms)
+      setRoomPanelOpen(false)
+      selectRoom(nextRooms[0]?.id || 'marvel')
+      showToast('Room quittee.')
+    } catch (e) {
+      showToast(e.message || 'Impossible de quitter la room.')
+    }
+  }
+
+  async function kickRoomMember(member) {
+    if (!canDeleteCurrentRoom || member.user_id === currentRoom.created_by) return
+
+    const ok = window.confirm(`Retirer ${member.pseudo || 'ce membre'} de ${currentRoom.name} ?`)
+    if (!ok) return
+
+    try {
+      await api('POST', '/auth/rooms', { action: 'kick', roomId: currentRoomId, targetUserId: member.user_id })
+      setRoomMembers(prev => prev.filter(entry => entry.user_id !== member.user_id))
+      showToast('Membre retire.')
+    } catch (e) {
+      setRoomMsg(e.message)
+    }
+  }
+
   // ─── REGARDER ───────────────────────────────────────────
   async function markWatched() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
@@ -1191,6 +1243,11 @@ export default function App() {
               Supprimer
             </button>
           )}
+          {currentRoomId !== 'marvel' && !canDeleteCurrentRoom && (
+            <button className="room-leave-btn" onClick={leaveCurrentRoom}>
+              Quitter
+            </button>
+          )}
           <button className="room-gate-toggle" onClick={() => { setRoomPanelOpen(open => !open); setRoomMsg('') }}>
             + Salle privée
           </button>
@@ -1232,6 +1289,19 @@ export default function App() {
                   <input type="password" value={roomManageCode} onChange={e => setRoomManageCode(e.target.value)} placeholder="Nouveau code d'acces" onKeyDown={e => e.key === 'Enter' && saveCurrentRoomCode()} />
                   <button onClick={saveCurrentRoomCode}>Mettre a jour</button>
                 </div>
+              </div>
+            )}
+            {canDeleteCurrentRoom && (
+              <div className="room-members-box">
+                <div className="room-code-title">Membres</div>
+                {roomMembers.length ? roomMembers.map(member => (
+                  <div className="room-member-row" key={member.user_id}>
+                    <span>{member.pseudo || 'Membre'}{member.user_id === currentRoom.created_by ? ' - createur' : ''}</span>
+                    {member.user_id !== currentRoom.created_by && (
+                      <button onClick={() => kickRoomMember(member)}>Retirer</button>
+                    )}
+                  </div>
+                )) : <div className="room-member-empty">Aucun membre a afficher.</div>}
               </div>
             )}
             {roomMsg && <div className="room-msg">{roomMsg}</div>}
@@ -1927,6 +1997,8 @@ const globalCss = `
           .room-actions {display:flex; align-items:center; gap:10px; }
           .room-delete-btn {background:rgba(255,93,93,0.08); border:1px solid rgba(255,93,93,0.55); color:#ff8a8a; border-radius:8px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
           .room-delete-btn:hover {background:rgba(255,93,93,0.16); border-color:#ff8a8a; }
+          .room-leave-btn {background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
+          .room-leave-btn:hover {border-color:var(--gold); color:var(--gold); }
           .room-gate-toggle {background:var(--bg2); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
           .room-gate {position:absolute; right:32px; top:132px; z-index:3000; width:360px; max-width:calc(100vw - 32px); background:linear-gradient(145deg,rgba(26,24,18,0.98),rgba(10,10,10,0.98)); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 24px 80px rgba(0,0,0,0.7); }
           .room-gate-head {display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
@@ -1947,6 +2019,11 @@ const globalCss = `
           .room-code-row input {min-width:0; flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px 12px; font-size:14px; outline:none; }
           .room-code-row input:focus {border-color:var(--gold); }
           .room-code-row button {background:var(--gold); border:none; color:#000; border-radius:10px; padding:0 12px; font-size:12px; font-weight:900; cursor:pointer; white-space:nowrap; }
+          .room-members-box {margin-top:16px; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+          .room-member-row {display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:9px 10px; }
+          .room-member-row span {min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-size:13px; }
+          .room-member-row button {background:transparent; border:1px solid rgba(255,93,93,0.45); color:#ff8a8a; border-radius:8px; padding:6px 9px; font-size:12px; font-weight:800; cursor:pointer; }
+          .room-member-empty {color:var(--text2); font-size:12px; }
           .room-msg {width:100%; color:var(--red); font-size:12px; }
           .room-title {margin-bottom:8px; color:var(--gold); }
 
