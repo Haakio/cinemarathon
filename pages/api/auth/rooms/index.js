@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { addRoomMember, createRoom, deleteRoom, getRoomById, getRoomByName, getRooms } from '../../../../lib/db'
+import { addRoomMember, createRoom, deleteRoom, getRoomById, getRoomByName, getRooms, updateRoomCode } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -79,6 +79,31 @@ export default async function handler(req, res) {
       if (!canDelete) return res.status(403).json({ error: 'Seul le createur peut supprimer cette room' })
 
       await deleteRoom(roomId)
+      return res.status(200).json({ ok: true })
+    } catch (err) {
+      console.error(err)
+      return res.status(500).json({ error: 'Erreur serveur' })
+    }
+  }
+
+  if (req.method === 'PATCH') {
+    const { roomId, code } = req.body || {}
+    if (!roomId) return res.status(400).json({ error: 'Room requise' })
+    if (roomId === 'marvel') return res.status(400).json({ error: 'La room Marvel reste publique' })
+    if (!code?.trim() || code.trim().length < 3) {
+      return res.status(400).json({ error: 'Code requis (min 3 caracteres)' })
+    }
+
+    try {
+      const room = await getRoomById(roomId)
+      if (!room) return res.status(404).json({ error: 'Room introuvable' })
+
+      const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
+      const canUpdate = room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo)
+      if (!canUpdate) return res.status(403).json({ error: 'Seul le createur peut changer le code' })
+
+      const joinCodeHash = await bcrypt.hash(code.trim(), 10)
+      await updateRoomCode(roomId, joinCodeHash)
       return res.status(200).json({ ok: true })
     } catch (err) {
       console.error(err)

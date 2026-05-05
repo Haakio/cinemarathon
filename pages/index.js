@@ -135,6 +135,7 @@ export default function App() {
   const [roomCode, setRoomCode] = useState('')
   const [roomJoinName, setRoomJoinName] = useState('')
   const [roomJoinCode, setRoomJoinCode] = useState('')
+  const [roomManageCode, setRoomManageCode] = useState('')
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
   const [roomMsg, setRoomMsg] = useState('')
@@ -992,6 +993,23 @@ export default function App() {
     }
   }
 
+  async function saveCurrentRoomCode() {
+    if (!canDeleteCurrentRoom) return
+    if (!roomManageCode.trim()) {
+      setRoomMsg('Entrez un code pour cette room.')
+      return
+    }
+
+    try {
+      await api('PATCH', '/auth/rooms', { roomId: currentRoomId, code: roomManageCode })
+      setRoomManageCode('')
+      setRoomMsg('')
+      showToast('Code de room mis a jour.')
+    } catch (e) {
+      setRoomMsg(e.message)
+    }
+  }
+
   // ─── REGARDER ───────────────────────────────────────────
   async function markWatched() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
@@ -1205,6 +1223,15 @@ export default function App() {
                 <label>Code d'acces</label>
                 <input type="password" value={roomCode} onChange={e => setRoomCode(e.target.value)} placeholder="A donner aux invites" onKeyDown={e => e.key === 'Enter' && createNewRoom()} />
                 <button onClick={createNewRoom}>Creer la salle</button>
+              </div>
+            )}
+            {canDeleteCurrentRoom && (
+              <div className="room-code-box">
+                <div className="room-code-title">Code de {currentRoom.name}</div>
+                <div className="room-code-row">
+                  <input type="password" value={roomManageCode} onChange={e => setRoomManageCode(e.target.value)} placeholder="Nouveau code d'acces" onKeyDown={e => e.key === 'Enter' && saveCurrentRoomCode()} />
+                  <button onClick={saveCurrentRoomCode}>Mettre a jour</button>
+                </div>
               </div>
             )}
             {roomMsg && <div className="room-msg">{roomMsg}</div>}
@@ -1914,6 +1941,12 @@ const globalCss = `
           .room-gate-form input {background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px 12px; font-size:14px; outline:none; }
           .room-gate-form input:focus {border-color:var(--gold); }
           .room-gate-form > button {margin-top:8px; background:var(--gold); border:none; color:#000; border-radius:10px; padding:12px; font-size:13px; font-weight:900; cursor:pointer; }
+          .room-code-box {margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+          .room-code-title {font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+          .room-code-row {display:flex; gap:8px; }
+          .room-code-row input {min-width:0; flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px 12px; font-size:14px; outline:none; }
+          .room-code-row input:focus {border-color:var(--gold); }
+          .room-code-row button {background:var(--gold); border:none; color:#000; border-radius:10px; padding:0 12px; font-size:12px; font-weight:900; cursor:pointer; white-space:nowrap; }
           .room-msg {width:100%; color:var(--red); font-size:12px; }
           .room-title {margin-bottom:8px; color:var(--gold); }
 
