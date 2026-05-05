@@ -20,8 +20,19 @@ export default async function handler(req, res) {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         slug TEXT UNIQUE NOT NULL,
+        join_code_hash TEXT,
+        is_private BOOLEAN DEFAULT true,
         created_by TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
+      CREATE TABLE IF NOT EXISTS room_members (
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT DEFAULT 'member',
+        joined_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (room_id, user_id)
       )
     `
     await sql`
@@ -120,10 +131,29 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS platform TEXT DEFAULT ''`
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS watch_url TEXT DEFAULT ''`
     await sql`ALTER TABLE watched ADD COLUMN IF NOT EXISTS room_id TEXT DEFAULT 'marvel'`
+    await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS join_code_hash TEXT`
+    await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT true`
     await sql`ALTER TABLE watchparty_peers ADD COLUMN IF NOT EXISTS viewer_candidates TEXT DEFAULT '[]'`
     await sql`ALTER TABLE watchparty_peers ADD COLUMN IF NOT EXISTS host_candidates TEXT DEFAULT '[]'`
     await sql`UPDATE watchlist SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE watched SET room_id = 'marvel' WHERE room_id IS NULL`
+    await sql`UPDATE rooms SET is_private = false WHERE id = 'marvel'`
+    await sql`
+      INSERT INTO room_members (room_id, user_id, role, joined_at)
+      SELECT id, created_by, 'owner', NOW()
+      FROM rooms
+      WHERE created_by IS NOT NULL AND created_by != 'setup'
+      ON CONFLICT (room_id, user_id) DO NOTHING
+    `
+    await sql`
+      INSERT INTO room_members (room_id, user_id, role, joined_at)
+      SELECT rooms.id, users.id, 'member', NOW()
+      FROM rooms
+      CROSS JOIN users
+      WHERE rooms.id != 'marvel'
+        AND rooms.join_code_hash IS NULL
+      ON CONFLICT (room_id, user_id) DO NOTHING
+    `
 
     return res.status(200).json({ ok: true, message: 'Tables creees avec succes !' })
   } catch (err) {

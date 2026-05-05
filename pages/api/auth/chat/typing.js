@@ -1,4 +1,4 @@
-import { getChatTyping, setChatTyping } from '../../../../lib/db'
+import { getChatTyping, hasRoomAccess, setChatTyping } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 export default async function handler(req, res) {
@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { roomId = 'marvel' } = req.query
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const typing = await getChatTyping(roomId, user.id)
       return res.status(200).json(typing)
     } catch (err) {
@@ -19,6 +20,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { roomId = 'marvel', isTyping = false } = req.body
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       await setChatTyping({
         roomId,
         userId: user.id,

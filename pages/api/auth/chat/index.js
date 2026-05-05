@@ -1,4 +1,4 @@
-import { createChatMessage, getChatMessages } from '../../../../lib/db'
+import { createChatMessage, getChatMessages, hasRoomAccess } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { roomId = 'marvel' } = req.query
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const messages = await getChatMessages(roomId)
       return res.status(200).json(messages)
     } catch (err) {
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
     if (text.length > 500) return res.status(400).json({ error: 'Message trop long' })
 
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const chatMessage = {
         id: uid(),
         roomId,

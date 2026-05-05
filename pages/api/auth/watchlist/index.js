@@ -1,4 +1,4 @@
-import { getWatchlist, insertWatchlistItem } from '../../../../lib/db'
+import { getWatchlist, hasRoomAccess, insertWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -11,6 +11,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { roomId = 'marvel' } = req.query
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const items = await getWatchlist(roomId)
       return res.status(200).json(items)
     } catch (err) {
@@ -24,6 +25,7 @@ export default async function handler(req, res) {
     if (!title || !type) return res.status(400).json({ error: 'Titre et type requis' })
     if (!isValidWatchUrl(watchUrl)) return res.status(400).json({ error: 'Lien de visionnage invalide' })
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const items = await getWatchlist(roomId)
       const item = {
         id: uid(),

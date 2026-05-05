@@ -6,6 +6,7 @@ import {
   getWatchPartyPeer,
   getWatchPartyPeers,
   getWatchPartySession,
+  hasRoomAccess,
   startWatchPartySession,
 } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
@@ -21,9 +22,11 @@ export default async function handler(req, res) {
     try {
       if (peerId) {
         const peer = await getWatchPartyPeer(peerId)
+        if (peer && !await hasRoomAccess(peer.room_id, user.id)) return res.status(403).json({ error: 'Room privee' })
         return res.status(200).json({ peer })
       }
 
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const session = await getWatchPartySession(roomId)
       const peers = session ? await getWatchPartyPeers(session.id) : []
       return res.status(200).json({ session, peers })
@@ -37,6 +40,7 @@ export default async function handler(req, res) {
     const { action, roomId = 'marvel', sessionId, peerId, offer, answer, side, candidate } = req.body
 
     try {
+      if (roomId && !await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       if (action === 'start') {
         const session = {
           id: uid(),

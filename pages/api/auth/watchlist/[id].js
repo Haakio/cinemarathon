@@ -1,4 +1,4 @@
-import { deleteWatchlistItem, getWatchlist, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
+import { deleteWatchlistItem, getWatchlist, hasRoomAccess, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function isValidWatchUrl(url) { return !url || /^https?:\/\//i.test(url) }
@@ -9,7 +9,9 @@ export default async function handler(req, res) {
   const { id } = req.query
 
   if (req.method === 'DELETE') {
+    const { roomId = 'marvel' } = req.body || {}
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       await deleteWatchlistItem(id)
       return res.status(200).json({ ok: true })
     } catch (err) {
@@ -23,6 +25,7 @@ export default async function handler(req, res) {
   const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl } = req.body
 
   try {
+    if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
     // ✏️ MODE MODIFICATION
     if (title || type || poster !== undefined || year !== undefined || platform !== undefined || watchUrl !== undefined) {
       const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)

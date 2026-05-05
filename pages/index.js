@@ -132,6 +132,11 @@ export default function App() {
   const [rooms, setRooms] = useState([])
   const [currentRoomId, setCurrentRoomId] = useState('marvel')
   const [newRoomName, setNewRoomName] = useState('')
+  const [roomCode, setRoomCode] = useState('')
+  const [roomJoinName, setRoomJoinName] = useState('')
+  const [roomJoinCode, setRoomJoinCode] = useState('')
+  const [roomPanelOpen, setRoomPanelOpen] = useState(false)
+  const [roomPanelMode, setRoomPanelMode] = useState('join')
   const [roomMsg, setRoomMsg] = useState('')
   const [watchlist, setWatchlist] = useState([])
   const [watched, setWatched] = useState([])
@@ -857,7 +862,7 @@ export default function App() {
 
   async function deleteItem(id) {
     if (!confirm('Supprimer ce titre ?')) return
-    try { await api('DELETE', `/auth/watchlist/${id}`); loadData(); showToast('Supprimé.') } catch { }
+    try { await api('DELETE', `/auth/watchlist/${id}`, { roomId: currentRoomId }); loadData(); showToast('Supprimé.') } catch { }
   }
 
   async function moveItem(id, dir) {
@@ -916,14 +921,44 @@ export default function App() {
       setRoomMsg('Entrez un nom de room.')
       return
     }
+    if (!roomCode.trim()) {
+      setRoomMsg('Entrez un code de room.')
+      return
+    }
 
     try {
-      const room = await api('POST', '/auth/rooms', { name: newRoomName })
+      const room = await api('POST', '/auth/rooms', { name: newRoomName, code: roomCode })
       setRooms(prev => [...prev, room])
       setNewRoomName('')
+      setRoomCode('')
       setRoomMsg('')
+      setRoomPanelOpen(false)
       selectRoom(room.id)
-      showToast('Room creee.')
+      showToast('Room privee creee.')
+    } catch (e) {
+      setRoomMsg(e.message)
+    }
+  }
+
+  async function joinPrivateRoom() {
+    if (!roomJoinName.trim() || !roomJoinCode.trim()) {
+      setRoomMsg('Entrez le nom et le code de la room.')
+      return
+    }
+
+    try {
+      const room = await api('POST', '/auth/rooms', {
+        action: 'join',
+        name: roomJoinName,
+        code: roomJoinCode,
+      })
+      setRooms(prev => prev.some(existing => existing.id === room.id) ? prev : [...prev, room])
+      setRoomJoinName('')
+      setRoomJoinCode('')
+      setRoomMsg('')
+      setRoomPanelOpen(false)
+      selectRoom(room.id)
+      showToast('Room rejointe.')
     } catch (e) {
       setRoomMsg(e.message)
     }
@@ -955,7 +990,7 @@ export default function App() {
     if (!confirm('Supprimer cet avis ?')) return
 
     try {
-      await api('DELETE', '/auth/watchlist/watched', { id })
+      await api('DELETE', '/auth/watchlist/watched', { id, roomId: currentRoomId })
       showToast('Avis supprimé.')
       loadData()
     } catch (e) {
@@ -1103,11 +1138,43 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="room-create">
-          <input value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder="Nouvelle room" onKeyDown={e => e.key === 'Enter' && createNewRoom()} />
-          <button onClick={createNewRoom}>Créer</button>
-        </div>
-        {roomMsg && <div className="room-msg">{roomMsg}</div>}
+        <button className="room-gate-toggle" onClick={() => { setRoomPanelOpen(open => !open); setRoomMsg('') }}>
+          + Salle privée
+        </button>
+        {roomPanelOpen && (
+          <div className="room-gate">
+            <div className="room-gate-head">
+              <div>
+                <div className="room-gate-kicker">Ticket d'entree</div>
+                <h2>{roomPanelMode === 'join' ? 'Rejoindre une room' : 'Creer une room'}</h2>
+              </div>
+              <button onClick={() => setRoomPanelOpen(false)}>×</button>
+            </div>
+            <div className="room-gate-tabs">
+              <button className={roomPanelMode === 'join' ? 'active' : ''} onClick={() => { setRoomPanelMode('join'); setRoomMsg('') }}>Rejoindre</button>
+              <button className={roomPanelMode === 'create' ? 'active' : ''} onClick={() => { setRoomPanelMode('create'); setRoomMsg('') }}>Creer</button>
+            </div>
+            {roomPanelMode === 'join' ? (
+              <div className="room-gate-form">
+                <label>Nom de la room</label>
+                <input value={roomJoinName} onChange={e => setRoomJoinName(e.target.value)} placeholder="SpiderVerse" />
+                <label>Code d'acces</label>
+                <input type="password" value={roomJoinCode} onChange={e => setRoomJoinCode(e.target.value)} placeholder="Code donne par l'hote" onKeyDown={e => e.key === 'Enter' && joinPrivateRoom()} />
+                <button onClick={joinPrivateRoom}>Entrer dans la salle</button>
+              </div>
+            ) : (
+              <div className="room-gate-form">
+                <label>Nom de la room</label>
+                <input value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder="Marathon perso" />
+                <label>Code d'acces</label>
+                <input type="password" value={roomCode} onChange={e => setRoomCode(e.target.value)} placeholder="A donner aux invites" onKeyDown={e => e.key === 'Enter' && createNewRoom()} />
+                <button onClick={createNewRoom}>Creer la salle</button>
+              </div>
+            )}
+            {roomMsg && <div className="room-msg">{roomMsg}</div>}
+          </div>
+        )}
+        {roomMsg && !roomPanelOpen && <div className="room-msg">{roomMsg}</div>}
       </div>
 
       {/* NAV */}
@@ -1793,6 +1860,20 @@ const globalCss = `
           .room-create {display:flex; gap:8px; align-items:center; }
           .room-create input {width:160px; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 10px; font-size:13px; outline:none; }
           .room-create button {background:var(--bg2); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+          .room-gate-toggle {background:var(--bg2); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
+          .room-gate {position:absolute; right:32px; top:132px; z-index:3000; width:360px; max-width:calc(100vw - 32px); background:linear-gradient(145deg,rgba(26,24,18,0.98),rgba(10,10,10,0.98)); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 24px 80px rgba(0,0,0,0.7); }
+          .room-gate-head {display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
+          .room-gate-head button {width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:20px; cursor:pointer; }
+          .room-gate-kicker {font-size:10px; color:var(--gold); text-transform:uppercase; letter-spacing:2px; margin-bottom:5px; }
+          .room-gate h2 {font-family:'Playfair Display',serif; color:var(--gold); font-size:28px; margin:0; }
+          .room-gate-tabs {display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+          .room-gate-tabs button {background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px; font-weight:800; cursor:pointer; }
+          .room-gate-tabs button.active {background:var(--gold); border-color:var(--gold); color:#000; }
+          .room-gate-form {display:flex; flex-direction:column; gap:8px; }
+          .room-gate-form label {font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
+          .room-gate-form input {background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px 12px; font-size:14px; outline:none; }
+          .room-gate-form input:focus {border-color:var(--gold); }
+          .room-gate-form > button {margin-top:8px; background:var(--gold); border:none; color:#000; border-radius:10px; padding:12px; font-size:13px; font-weight:900; cursor:pointer; }
           .room-msg {width:100%; color:var(--red); font-size:12px; }
           .room-title {margin-bottom:8px; color:var(--gold); }
 
@@ -2073,6 +2154,7 @@ const globalCss = `
           .settings-menu {right:0; width:240px; }
           .user-name {display:none; }
           .room-bar {padding:12px 16px; align-items:stretch; }
+          .room-gate {position:fixed; top:96px; right:16px; left:16px; width:auto; max-width:none; }
           .room-create {width:100%; }
           .room-create input {flex:1; width:auto; }
           .chat-widget {right:14px; bottom:14px; }

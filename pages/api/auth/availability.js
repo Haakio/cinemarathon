@@ -1,4 +1,4 @@
-import { getAvailability, setAvailability } from '../../../lib/db'
+import { getAvailability, hasRoomAccess, setAvailability } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
 
 export default async function handler(req, res) {
@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { roomId = 'marvel' } = req.query
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const entries = await getAvailability(roomId)
       return res.status(200).json(entries)
     } catch (err) {
@@ -21,6 +22,7 @@ export default async function handler(req, res) {
     if (!dayKey || !slotKey || !slotLabel) return res.status(400).json({ error: 'Creneau requis' })
 
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const saved = await setAvailability({
         roomId,
         userId: user.id,

@@ -1,4 +1,4 @@
-import { getWatched, upsertWatched, deleteWatched } from '../../../../../lib/db'
+import { getWatched, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { roomId = 'marvel' } = req.query
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const entries = await getWatched(roomId)
       return res.status(200).json(entries)
     } catch (err) {
@@ -22,6 +23,7 @@ export default async function handler(req, res) {
     const { roomId = 'marvel', itemId, rating, comment } = req.body
     if (!itemId || !rating) return res.status(400).json({ error: 'itemId et rating requis' })
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const entry = {
         id: uid(),
         roomId,
@@ -40,10 +42,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    const { id } = req.body
+    const { id, roomId = 'marvel' } = req.body
     if (!id) return res.status(400).json({ error: 'id requis' })
 
     try {
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const entries = await getWatched()
       const entry = entries.find(e => e.id === id)
 
