@@ -964,6 +964,25 @@ export default function App() {
     }
   }
 
+  async function deleteCurrentRoom() {
+    const room = rooms.find(entry => entry.id === currentRoomId)
+    if (!room || room.id === 'marvel') return
+
+    const ok = window.confirm(`Supprimer la room "${room.name}" et toutes ses donnees ?`)
+    if (!ok) return
+
+    try {
+      await api('DELETE', '/auth/rooms', { roomId: room.id })
+      const nextRooms = rooms.filter(entry => entry.id !== room.id)
+      setRooms(nextRooms)
+      setRoomPanelOpen(false)
+      selectRoom(nextRooms[0]?.id || 'marvel')
+      showToast('Room supprimee.')
+    } catch (e) {
+      showToast(e.message || 'Impossible de supprimer la room.')
+    }
+  }
+
   // ─── REGARDER ───────────────────────────────────────────
   async function markWatched() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
@@ -1027,6 +1046,7 @@ export default function App() {
   const myWatchEntry = currentItem ? watched.find(w => w.item_id === currentItem.id && w.user_id === currentUser?.id) : null
   const anySeen = currentItem ? seenItemIds.includes(currentItem.id) : false
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
+  const canDeleteCurrentRoom = currentRoom.id !== 'marvel' && (currentRoom.created_by === currentUser?.id || isAdmin)
   const cinemaDays = mounted ? getCinemaDays() : []
   const availabilityBySlot = availability.reduce((acc, entry) => {
     const key = `${entry.day_key}|${entry.slot_key}`
@@ -1138,9 +1158,16 @@ export default function App() {
             </button>
           ))}
         </div>
-        <button className="room-gate-toggle" onClick={() => { setRoomPanelOpen(open => !open); setRoomMsg('') }}>
-          + Salle privée
-        </button>
+        <div className="room-actions">
+          {canDeleteCurrentRoom && (
+            <button className="room-delete-btn" onClick={deleteCurrentRoom}>
+              Supprimer
+            </button>
+          )}
+          <button className="room-gate-toggle" onClick={() => { setRoomPanelOpen(open => !open); setRoomMsg('') }}>
+            + Salle privée
+          </button>
+        </div>
         {roomPanelOpen && (
           <div className="room-gate">
             <div className="room-gate-head">
@@ -1860,6 +1887,9 @@ const globalCss = `
           .room-create {display:flex; gap:8px; align-items:center; }
           .room-create input {width:160px; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 10px; font-size:13px; outline:none; }
           .room-create button {background:var(--bg2); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+          .room-actions {display:flex; align-items:center; gap:10px; }
+          .room-delete-btn {background:rgba(255,93,93,0.08); border:1px solid rgba(255,93,93,0.55); color:#ff8a8a; border-radius:8px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
+          .room-delete-btn:hover {background:rgba(255,93,93,0.16); border-color:#ff8a8a; }
           .room-gate-toggle {background:var(--bg2); border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
           .room-gate {position:absolute; right:32px; top:132px; z-index:3000; width:360px; max-width:calc(100vw - 32px); background:linear-gradient(145deg,rgba(26,24,18,0.98),rgba(10,10,10,0.98)); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 24px 80px rgba(0,0,0,0.7); }
           .room-gate-head {display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
@@ -2154,6 +2184,7 @@ const globalCss = `
           .settings-menu {right:0; width:240px; }
           .user-name {display:none; }
           .room-bar {padding:12px 16px; align-items:stretch; }
+          .room-actions {width:100%; justify-content:flex-end; }
           .room-gate {position:fixed; top:96px; right:16px; left:16px; width:auto; max-width:none; }
           .room-create {width:100%; }
           .room-create input {flex:1; width:auto; }
