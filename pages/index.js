@@ -247,6 +247,11 @@ export default function App() {
   }, [authed, currentRoomId])
 
   useEffect(() => { if (authed) loadRooms() }, [authed, loadRooms])
+  useEffect(() => {
+    if (!authed) return
+    const timer = setInterval(loadRooms, 4000)
+    return () => clearInterval(timer)
+  }, [authed, loadRooms])
   useEffect(() => { if (authed) loadData() }, [authed, loadData])
   useEffect(() => { if (authed) loadAvailability() }, [authed, loadAvailability])
 
@@ -1146,6 +1151,10 @@ export default function App() {
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
   const canDeleteCurrentRoom = currentRoom.id !== 'marvel' && (currentRoom.can_delete || currentRoom.created_by === currentUser?.id || isAdmin)
   const canManageCurrentRoom = currentRoom.id === 'marvel' ? isAdmin : (currentRoom.can_manage || canDeleteCurrentRoom || isAdmin)
+
+  useEffect(() => {
+    if (page === 'admin' && !canManageCurrentRoom) setPage('liste')
+  }, [page, canManageCurrentRoom])
   const cinemaDays = mounted ? getCinemaDays() : []
   const availabilityBySlot = availability.reduce((acc, entry) => {
     const key = `${entry.day_key}|${entry.slot_key}`
