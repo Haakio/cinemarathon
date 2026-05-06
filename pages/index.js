@@ -278,7 +278,7 @@ export default function App() {
   useEffect(() => {
     const room = rooms.find(entry => entry.id === currentRoomId)
     const canManage = room && room.id !== 'marvel' && (room.can_delete || room.created_by === currentUser?.id || isAdmin)
-    if (!roomPanelOpen || !canManage) {
+    if ((!roomPanelOpen && page !== 'admin') || !canManage) {
       setRoomMembers([])
       return
     }
@@ -289,7 +289,7 @@ export default function App() {
       .catch(() => { if (!cancelled) setRoomMembers([]) })
 
     return () => { cancelled = true }
-  }, [roomPanelOpen, currentRoomId, rooms, currentUser?.id, isAdmin])
+  }, [roomPanelOpen, page, currentRoomId, rooms, currentUser?.id, isAdmin])
 
   const loadChat = useCallback(async () => {
     if (!authed || !chatEnabled || !currentRoomId) return
@@ -1062,6 +1062,25 @@ export default function App() {
     }
   }
 
+  async function setRoomAdmin(member, makeAdmin) {
+    if (!canDeleteCurrentRoom || member.user_id === currentRoom.created_by) return
+
+    try {
+      await api('POST', '/auth/rooms', {
+        action: 'setRole',
+        roomId: currentRoomId,
+        targetUserId: member.user_id,
+        role: makeAdmin ? 'admin' : 'member',
+      })
+      setRoomMembers(prev => prev.map(entry => (
+        entry.user_id === member.user_id ? { ...entry, role: makeAdmin ? 'admin' : 'member' } : entry
+      )))
+      showToast(makeAdmin ? 'Admin ajoute.' : 'Admin retire.')
+    } catch (e) {
+      setRoomMsg(e.message)
+    }
+  }
+
   // ─── REGARDER ───────────────────────────────────────────
   async function markWatched() {
     if (!currentRating) { showToast('Attribuez d\'abord une note !'); return }
@@ -1126,6 +1145,7 @@ export default function App() {
   const anySeen = currentItem ? seenItemIds.includes(currentItem.id) : false
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
   const canDeleteCurrentRoom = currentRoom.id !== 'marvel' && (currentRoom.can_delete || currentRoom.created_by === currentUser?.id || isAdmin)
+  const canManageCurrentRoom = currentRoom.id === 'marvel' ? isAdmin : (currentRoom.can_manage || canDeleteCurrentRoom || isAdmin)
   const cinemaDays = mounted ? getCinemaDays() : []
   const availabilityBySlot = availability.reduce((acc, entry) => {
     const key = `${entry.day_key}|${entry.slot_key}`
@@ -1312,7 +1332,14 @@ export default function App() {
 
       {/* NAV */}
       <nav className="nav">
-        {[['liste', '🎬 Liste'], ['regarder', '▶ Regarder'], ['vu', '✓ Déjà vu'], ['dispos', '◷ Dispos'], ['secret', '◆ Secret'], ['admin', '⚙ Admin']].map(([id, label]) => (
+        {[
+          ['liste', '🎬 Liste'],
+          ['regarder', '▶ Regarder'],
+          ['vu', '✓ Déjà vu'],
+          ['dispos', '◷ Dispos'],
+          ['secret', '◆ Secret'],
+          ...(canManageCurrentRoom ? [['admin', '⚙ Admin']] : []),
+        ].map(([id, label]) => (
           <button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>{label}</button>
         ))}
       </nav>
@@ -1764,7 +1791,7 @@ export default function App() {
         </div>
       )}
 
-      {page === 'admin' && (
+      {page === 'admin' && canManageCurrentRoom && (
         <div className="page">
           <h1 className="page-title">Administration</h1>
           <p className="page-subtitle">Gérer la liste de la room {currentRoom.name}</p>
@@ -1817,6 +1844,30 @@ export default function App() {
                 </div>
               }
             </div>
+            {canDeleteCurrentRoom && (
+              <div className="admin-card">
+                <h2>Admins de room</h2>
+                {roomMembers.length === 0 ? (
+                  <div className="admin-empty">Aucun membre pour le moment</div>
+                ) : (
+                  <div className="admin-list">
+                    {roomMembers.map(member => (
+                      <div key={member.user_id} className="admin-member-item">
+                        <div>
+                          <strong>{member.pseudo || 'Membre'}</strong>
+                          <span>{member.role === 'owner' ? 'Createur' : member.role === 'admin' ? 'Admin' : 'Membre'}</span>
+                        </div>
+                        {member.user_id !== currentRoom.created_by && (
+                          <button className="btn-up" onClick={() => setRoomAdmin(member, member.role !== 'admin')}>
+                            {member.role === 'admin' ? 'Retirer admin' : 'Ajouter admin'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2211,6 +2262,11 @@ const globalCss = `
           .admin-item-info {flex:1; min-width:0; }
           .admin-item-title {font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .admin-item-type {font-size:11px; color:var(--text2); text-transform:uppercase; }
+          .admin-member-item {display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 12px; background:var(--bg3); border-radius:8px; border:1px solid var(--border); }
+          .admin-member-item div {display:flex; flex-direction:column; gap:2px; min-width:0; }
+          .admin-member-item strong {font-size:13px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .admin-member-item span {font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+          .admin-empty {text-align:center; padding:26px 0; color:var(--text2); font-size:14px; }
           .btn-del {background:none; border:none; color:var(--text2); cursor:pointer; font-size:14px; padding:4px; transition:color 0.2s; }
           .btn-del:hover {color:var(--red); }
           .btn-up, .btn-down {background:none; border:none; color:var(--text2); cursor:pointer; font-size:12px; padding:4px; transition:color 0.2s; }
