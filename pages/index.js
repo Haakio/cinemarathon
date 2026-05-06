@@ -193,6 +193,7 @@ export default function App() {
   const remoteStreamRef = useRef(null)
   const remoteVideoRef = useRef(null)
   const hostVideoRef = useRef(null)
+  const chatMessagesRef = useRef(null)
   const viewerPcRef = useRef(null)
   const hostPeerConnectionsRef = useRef({})
   const viewerPeerIdRef = useRef(null)
@@ -204,6 +205,13 @@ export default function App() {
   const [editingId, setEditingId] = useState(null)
 
   useEffect(() => { setMounted(true) }, [])
+
+  const scrollChatToBottom = useCallback((behavior = 'smooth') => {
+    window.requestAnimationFrame(() => {
+      const box = chatMessagesRef.current
+      if (box) box.scrollTo({ top: box.scrollHeight, behavior })
+    })
+  }, [])
 
   // Restore session
   useEffect(() => {
@@ -315,6 +323,14 @@ export default function App() {
     const timer = setInterval(loadChat, chatOpen ? 2500 : 6000)
     return () => clearInterval(timer)
   }, [chatEnabled, chatOpen, loadChat])
+
+  useEffect(() => {
+    if (chatOpen) scrollChatToBottom('auto')
+  }, [chatOpen, scrollChatToBottom])
+
+  useEffect(() => {
+    if (chatOpen) scrollChatToBottom('smooth')
+  }, [chatMessages.length, chatOpen, scrollChatToBottom])
 
   useEffect(() => {
     setChatMessages([])
@@ -785,6 +801,7 @@ export default function App() {
       await api('POST', '/auth/chat/typing', { roomId: currentRoomId, isTyping: false })
       setChatInput('')
       loadChat()
+      scrollChatToBottom('smooth')
     } catch (e) {
       showToast('Erreur chat: ' + e.message)
     }
@@ -1924,7 +1941,7 @@ export default function App() {
 
             {chatEnabled ? (
               <>
-                <div className="chat-messages">
+                <div className="chat-messages" ref={chatMessagesRef}>
                   {chatMessages.length === 0 ? (
                     <div className="chat-empty">Aucun message dans cette room.</div>
                   ) : chatMessages.map(msg => (
