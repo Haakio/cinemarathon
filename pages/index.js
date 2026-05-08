@@ -1366,7 +1366,7 @@ export default function App() {
           ['regarder', '▶ Regarder'],
           ['vu', '✓ Déjà vu'],
           ['dispos', '◷ Dispos'],
-          ['secret', '◆ Secret'],
+          ['secret', '✦ Secret'],
           ...(canManageCurrentRoom ? [['admin', '⚙ Admin']] : []),
         ].map(([id, label]) => (
           <button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>{label}</button>
