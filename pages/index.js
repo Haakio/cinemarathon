@@ -1196,6 +1196,7 @@ export default function App() {
     <>
       <Head>
         <title>CinéMarathon</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </Head>
       <style>{globalCss}</style>
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />
@@ -1206,6 +1207,7 @@ export default function App() {
     <>
       <Head>
         <title>CinéMarathon</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       </Head>
       <style>{globalCss}</style>
@@ -1243,6 +1245,7 @@ export default function App() {
     <>
       <Head>
         <title>CinéMarathon</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       </Head>
       <style>{globalCss}</style>
