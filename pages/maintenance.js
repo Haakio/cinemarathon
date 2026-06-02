@@ -69,7 +69,7 @@ export default function Maintenance() {
   function soumettre() {
     const rep = guess.trim()
     if (!rep) return
-    const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const normalize = s => s.toLowerCase().replace(/\b(the|le|la|les|l)\b/g, '').replace(/[^a-z0-9]/g, '')
     const correct = normalize(rep) === normalize(film.title)
     const newEssais = [...essais, { rep, correct }]
     setEssais(newEssais)
