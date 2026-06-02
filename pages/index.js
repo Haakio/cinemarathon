@@ -122,6 +122,7 @@ async function tuneSender(sender) {
 // ─── App ───────────────────────────────────────────────────
 export default function App() {
   const [mounted, setMounted] = useState(false)
+  const [pageVisible, setPageVisible] = useState(true)
   const [authed, setAuthed] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [authTab, setAuthTab] = useState('login')
@@ -206,6 +207,13 @@ export default function App() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  useEffect(() => {
+    const updateVisibility = () => setPageVisible(document.visibilityState === 'visible')
+    updateVisibility()
+    document.addEventListener('visibilitychange', updateVisibility)
+    return () => document.removeEventListener('visibilitychange', updateVisibility)
+  }, [])
+
   const scrollChatToBottom = useCallback((behavior = 'smooth') => {
     window.requestAnimationFrame(() => {
       const box = chatMessagesRef.current
@@ -256,10 +264,10 @@ export default function App() {
 
   useEffect(() => { if (authed) loadRooms() }, [authed, loadRooms])
   useEffect(() => {
-    if (!authed) return
+    if (!authed || !pageVisible) return
     const timer = setInterval(loadRooms, 4000)
     return () => clearInterval(timer)
-  }, [authed, loadRooms])
+  }, [authed, pageVisible, loadRooms])
   useEffect(() => { if (authed) loadData() }, [authed, loadData])
   useEffect(() => { if (authed) loadAvailability() }, [authed, loadAvailability])
 
@@ -291,7 +299,7 @@ export default function App() {
   useEffect(() => {
     const room = rooms.find(entry => entry.id === currentRoomId)
     const canManage = room && room.id !== 'marvel' && (room.can_delete || room.created_by === currentUser?.id || isAdmin)
-    if ((!roomPanelOpen && page !== 'admin') || !canManage) {
+    if (!pageVisible || (!roomPanelOpen && page !== 'admin') || !canManage) {
       setRoomMembers([])
       return
     }
@@ -302,7 +310,7 @@ export default function App() {
       .catch(() => { if (!cancelled) setRoomMembers([]) })
 
     return () => { cancelled = true }
-  }, [roomPanelOpen, page, currentRoomId, rooms, currentUser?.id, isAdmin])
+  }, [roomPanelOpen, page, pageVisible, currentRoomId, rooms, currentUser?.id, isAdmin])
 
   const loadChat = useCallback(async () => {
     if (!authed || !chatEnabled || !currentRoomId) return
@@ -318,11 +326,19 @@ export default function App() {
   }, [authed, chatEnabled, currentRoomId])
 
   useEffect(() => {
-    if (!chatEnabled) return
+    if (!chatEnabled || !pageVisible) return
     loadChat()
     const timer = setInterval(loadChat, chatOpen ? 2500 : 6000)
     return () => clearInterval(timer)
-  }, [chatEnabled, chatOpen, loadChat])
+  }, [chatEnabled, chatOpen, pageVisible, loadChat])
+
+  useEffect(() => {
+    if (!authed || !pageVisible) return
+    loadRooms()
+    loadData()
+    loadAvailability()
+    if (chatEnabled) loadChat()
+  }, [authed, pageVisible, loadRooms, loadData, loadAvailability, chatEnabled, loadChat])
 
   useEffect(() => {
     if (chatOpen) scrollChatToBottom('auto')
@@ -338,14 +354,14 @@ export default function App() {
   }, [currentRoomId])
 
   useEffect(() => {
-    if (!chatEnabled || !chatOpen || !chatInput.trim() || !currentRoomId) return
+    if (!pageVisible || !chatEnabled || !chatOpen || !chatInput.trim() || !currentRoomId) return
     const roomId = currentRoomId
     api('POST', '/auth/chat/typing', { roomId, isTyping: true }).catch(() => { })
     const timer = setTimeout(() => {
       api('POST', '/auth/chat/typing', { roomId, isTyping: false }).catch(() => { })
     }, 1500)
     return () => clearTimeout(timer)
-  }, [chatInput, chatEnabled, chatOpen, currentRoomId])
+  }, [chatInput, pageVisible, chatEnabled, chatOpen, currentRoomId])
 
   const loadWatchParty = useCallback(async () => {
     if (!authed || !currentRoomId || !secretUnlocked) return
@@ -359,18 +375,18 @@ export default function App() {
   }, [authed, currentRoomId, secretUnlocked])
 
   useEffect(() => {
-    if (!secretUnlocked || page !== 'secret') return
+    if (!pageVisible || !secretUnlocked || page !== 'secret') return
     loadWatchParty()
     const timer = setInterval(loadWatchParty, watchPartyRole === 'host' ? 1000 : 2500)
     return () => clearInterval(timer)
-  }, [secretUnlocked, page, loadWatchParty, watchPartyRole])
+  }, [secretUnlocked, page, pageVisible, loadWatchParty, watchPartyRole])
 
   useEffect(() => {
-    if (watchPartyRole !== 'host' || !hostStreamRef.current || !watchPartySession) return
+    if (!pageVisible || watchPartyRole !== 'host' || !hostStreamRef.current || !watchPartySession) return
     loadWatchParty()
     const timer = setInterval(loadWatchParty, 1000)
     return () => clearInterval(timer)
-  }, [watchPartyRole, watchPartySession, loadWatchParty])
+  }, [pageVisible, watchPartyRole, watchPartySession, loadWatchParty])
 
   useEffect(() => {
     if (watchPartyRole !== 'host' || !hostStreamRef.current || !watchPartySession) return
