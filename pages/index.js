@@ -2,6 +2,10 @@ import Head from 'next/head'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { patchnotes } from '../lib/patchnotes'
 
+const MAINTENANCE_MODE = true
+const MAINTENANCE_UNTIL = '2026-06-05T23:59:59+02:00'
+const WATCH_PARTY_ENABLED = false
+
 // ─── API helpers ───────────────────────────────────────────
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('cm_token') : null }
 function getUser() { try { return JSON.parse(localStorage.getItem('cm_user')) } catch { return null } }
@@ -31,7 +35,18 @@ function getCinemaDays() {
   })
 }
 
+function formatMaintenanceCountdown(ms) {
+  const safeMs = Math.max(0, ms)
+  const totalSeconds = Math.floor(safeMs / 1000)
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return { days, hours, minutes, seconds }
+}
+
 async function api(method, path, body) {
+  if (MAINTENANCE_MODE) throw new Error('Site temporairement indisponible')
   const res = await fetch('/api' + path, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
@@ -122,6 +137,7 @@ async function tuneSender(sender) {
 // ─── App ───────────────────────────────────────────────────
 export default function App() {
   const [mounted, setMounted] = useState(false)
+  const [maintenanceRemaining, setMaintenanceRemaining] = useState(() => new Date(MAINTENANCE_UNTIL).getTime() - Date.now())
   const [pageVisible, setPageVisible] = useState(true)
   const [authed, setAuthed] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
@@ -208,6 +224,14 @@ export default function App() {
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
+    if (!MAINTENANCE_MODE) return
+    const updateCountdown = () => setMaintenanceRemaining(new Date(MAINTENANCE_UNTIL).getTime() - Date.now())
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
     const updateVisibility = () => setPageVisible(document.visibilityState === 'visible')
     updateVisibility()
     document.addEventListener('visibilitychange', updateVisibility)
@@ -223,6 +247,7 @@ export default function App() {
 
   // Restore session
   useEffect(() => {
+    if (MAINTENANCE_MODE) return
     const user = getUser()
     const token = getToken()
     if (user && token) { setCurrentUser(user); setAuthed(true) }
@@ -1218,6 +1243,40 @@ export default function App() {
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />
     </>
   )
+
+  if (MAINTENANCE_MODE) {
+    const countdown = formatMaintenanceCountdown(maintenanceRemaining)
+    return (
+      <>
+        <Head>
+          <title>CinÃ©Marathon - indisponible</title>
+          <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+          <meta name="robots" content="noindex" />
+        </Head>
+        <style>{globalCss}</style>
+        <div className="maintenance-screen">
+          <div className="maintenance-card">
+            <div className="maintenance-kicker">Base de donnees bloquee</div>
+            <h1>Site temporairement indisponible</h1>
+            <p>
+              Je suis vraiment navre, CineMarathon est en pause pour le moment:
+              la base de donnees Neon a atteint sa limite mensuelle de compute.
+              Le site est donc bloque temporairement le temps que le quota soit retabli.
+            </p>
+            <div className="maintenance-countdown" aria-label="Compte a rebours">
+              <div><strong>{countdown.days}</strong><span>jours</span></div>
+              <div><strong>{String(countdown.hours).padStart(2, '0')}</strong><span>heures</span></div>
+              <div><strong>{String(countdown.minutes).padStart(2, '0')}</strong><span>min</span></div>
+              <div><strong>{String(countdown.seconds).padStart(2, '0')}</strong><span>sec</span></div>
+            </div>
+            <div className="maintenance-note">
+              Les donnees ne sont pas supprimees. Le site reviendra des que la base sera de nouveau disponible.
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   if (!authed) return (
     <>
