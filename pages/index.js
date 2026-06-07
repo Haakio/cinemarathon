@@ -326,10 +326,10 @@ export default function App() {
   }, [authed, chatEnabled, currentRoomId])
 
   useEffect(() => {
-    if (!chatEnabled || !pageVisible) return
-    loadChat()
-    const timer = setInterval(loadChat, chatOpen ? 2500 : 6000)
-    return () => clearInterval(timer)
+  if (!chatEnabled || !pageVisible || !chatOpen) return
+  loadChat()
+  const timer = setInterval(loadChat, 2500)
+  return () => clearInterval(timer)
   }, [chatEnabled, chatOpen, pageVisible, loadChat])
 
   useEffect(() => {
