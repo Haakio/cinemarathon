@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 
 // ─── MAINTENANCE ────────────────────────────────────────────
 // Passe à true pour bloquer le site, false pour le rouvrir
-const MAINTENANCE = true
+const MAINTENANCE = false
 // ────────────────────────────────────────────────────────────
 
 export default function App({ Component, pageProps }) {
