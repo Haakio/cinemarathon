@@ -264,10 +264,10 @@ export default function App() {
 
   useEffect(() => { if (authed) loadRooms() }, [authed, loadRooms])
   useEffect(() => {
-    if (!authed || !pageVisible) return
-    const timer = setInterval(loadRooms, 4000)
+  if (!authed || !pageVisible || page === 'regarder' || page === 'vu') return
+    const timer = setInterval(loadRooms, 8000) // interval plus long aussi
     return () => clearInterval(timer)
-  }, [authed, pageVisible, loadRooms])
+  }, [authed, pageVisible, page, loadRooms])
   useEffect(() => { if (authed) loadData() }, [authed, loadData])
   useEffect(() => { if (authed) loadAvailability() }, [authed, loadAvailability])
 
@@ -468,7 +468,7 @@ export default function App() {
   useEffect(() => {
     if (!authed || page !== 'dispos') return
     loadAvailability()
-    const timer = setInterval(loadAvailability, 2500)
+    const timer = setInterval(loadAvailability, 10000)
     return () => clearInterval(timer)
   }, [authed, page, loadAvailability])
 
