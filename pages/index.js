@@ -13,8 +13,6 @@ function getChatPref(userId) { return typeof window !== 'undefined' ? localStora
 function saveChatPref(userId, value) { localStorage.setItem(`cm_chat_pref_${userId}`, value) }
 function getPatchPref(userId) { return typeof window !== 'undefined' ? localStorage.getItem(`cm_patchnotes_${userId}`) : null }
 function savePatchPref(userId) { localStorage.setItem(`cm_patchnotes_${userId}`, patchnotes.version) }
-function getRoomGoals(roomId) { try { return JSON.parse(localStorage.getItem(`cm_goals_${roomId}`) || '[]') } catch { return [] } }
-function saveRoomGoals(roomId, goals) { localStorage.setItem(`cm_goals_${roomId}`, JSON.stringify(goals)) }
 
 const cinemaSlots = [
   { key: 'prime', label: '20h30', vibe: 'Séance principale' },
@@ -131,11 +129,9 @@ export default function App() {
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
 
-  const [page, setPage] = useState('overview')
+  const [page, setPage] = useState('liste')
   const [rooms, setRooms] = useState([])
   const [currentRoomId, setCurrentRoomId] = useState('marvel')
-  const [globalSearch, setGlobalSearch] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
   const [roomCode, setRoomCode] = useState('')
   const [roomJoinName, setRoomJoinName] = useState('')
@@ -182,8 +178,6 @@ export default function App() {
   const [patchCloseReady, setPatchCloseReady] = useState(false)
   const [availability, setAvailability] = useState([])
   const [availabilityPreference, setAvailabilityPreference] = useState('any')
-  const [roomGoals, setRoomGoals] = useState([])
-  const [goalDraft, setGoalDraft] = useState('')
   const [secretUnlocked, setSecretUnlocked] = useState(false)
   const [secretPassword, setSecretPassword] = useState('')
   const [secretError, setSecretError] = useState('')
@@ -357,11 +351,6 @@ export default function App() {
   useEffect(() => {
     setChatMessages([])
     setChatTypingUsers([])
-  }, [currentRoomId])
-
-  useEffect(() => {
-    setRoomGoals(getRoomGoals(currentRoomId))
-    setGoalDraft('')
   }, [currentRoomId])
 
   useEffect(() => {
@@ -1152,26 +1141,6 @@ export default function App() {
     if (idx >= 0) { setWatchIdx(idx); setPage('regarder') }
   }
 
-  function addRoomGoal() {
-    if (!goalDraft.trim() || !canDeleteCurrentRoom) return
-    const goal = {
-      id: `${Date.now()}`,
-      title: goalDraft.trim(),
-      createdAt: new Date().toISOString(),
-    }
-    const nextGoals = [goal, ...roomGoals].slice(0, 8)
-    setRoomGoals(nextGoals)
-    saveRoomGoals(currentRoomId, nextGoals)
-    setGoalDraft('')
-  }
-
-  function removeRoomGoal(goalId) {
-    if (!canDeleteCurrentRoom) return
-    const nextGoals = roomGoals.filter(goal => goal.id !== goalId)
-    setRoomGoals(nextGoals)
-    saveRoomGoals(currentRoomId, nextGoals)
-  }
-
   async function deleteReview(id) {
     if (!confirm('Supprimer cet avis ?')) return
 
@@ -1215,40 +1184,6 @@ export default function App() {
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
   const canDeleteCurrentRoom = currentRoom.id !== 'marvel' && (currentRoom.can_delete || currentRoom.created_by === currentUser?.id || isAdmin)
   const canManageCurrentRoom = currentRoom.id === 'marvel' ? isAdmin : (currentRoom.can_manage || canDeleteCurrentRoom || isAdmin)
-  const totalItems = watchlist.length
-  const seenCount = seenItemIds.length
-  const remainingCount = Math.max(0, totalItems - seenCount)
-  const progressPercent = totalItems ? Math.round((seenCount / totalItems) * 100) : 0
-  const filmCount = watchlist.filter(item => item.type === 'film').length
-  const serieCount = watchlist.filter(item => item.type === 'serie').length
-  const estimatedHoursLeft = remainingCount * 2
-  const nextItem = watchlist.find(item => !seenItemIds.includes(item.id)) || watchlist[0] || null
-  const roomMembersCount = roomMembers.length || (currentRoom.id === 'marvel' ? 1 : 1)
-  const roomCreatorLabel = currentRoom.created_by === currentUser?.id ? currentUser?.pseudo : (currentRoom.created_by ? 'Createur' : 'Cinemarathon')
-  const roomCreatedLabel = currentRoom.created_at ? new Date(currentRoom.created_at).toLocaleDateString('fr-FR') : 'Non renseigne'
-  const roomDescription = currentRoom.id === 'marvel'
-    ? "Le marathon MCU complet dans l'ordre chronologique."
-    : `Salle privee dediee au marathon ${currentRoom.name}.`
-  const roomBanner = nextItem?.poster || watchlist.find(item => item.poster)?.poster || ''
-  const dashboardActivity = [
-    ...watched.slice(0, 6).map(entry => {
-      const item = watchlist.find(movie => movie.id === entry.item_id)
-      return {
-        id: `watched-${entry.id}`,
-        icon: entry.comment ? 'ðŸ’¬' : 'â­',
-        text: `${entry.pseudo || 'Un membre'} ${entry.comment ? 'ecrit un avis sur' : `note ${entry.rating}/10`} ${item?.title || 'un titre'}`,
-      }
-    }),
-    ...(!watched.length && nextItem ? [{ id: 'next', icon: 'ðŸŽ¬', text: `Prochaine seance suggeree: ${nextItem.title}` }] : []),
-    { id: 'room', icon: 'ðŸ‘¥', text: `Room ${currentRoom.name} active` },
-  ].slice(0, 6)
-  const memberPreview = roomMembers.length ? roomMembers.slice(0, 5) : [{ user_id: currentUser?.id || 'me', pseudo: currentUser?.pseudo || 'Vous', role: 'owner' }]
-  const searchTerm = globalSearch.trim().toLowerCase()
-  const searchResults = searchTerm ? [
-    ...watchlist.filter(item => `${item.title} ${item.year || ''} ${item.type}`.toLowerCase().includes(searchTerm)).slice(0, 5).map(item => ({ type: item.type === 'film' ? 'Film' : 'Serie', label: item.title, meta: item.year || currentRoom.name, action: () => goWatch(item.id) })),
-    ...rooms.filter(room => room.name.toLowerCase().includes(searchTerm)).slice(0, 4).map(room => ({ type: 'Room', label: room.name, meta: room.id === currentRoomId ? 'Actuelle' : 'Changer de salle', action: () => selectRoom(room.id) })),
-    ...roomMembers.filter(member => (member.pseudo || '').toLowerCase().includes(searchTerm)).slice(0, 4).map(member => ({ type: 'Membre', label: member.pseudo || 'Membre', meta: member.role || 'membre', action: () => setPage('overview') })),
-  ] : []
 
   useEffect(() => {
     if (page === 'admin' && !canManageCurrentRoom) setPage('liste')
@@ -1334,38 +1269,6 @@ export default function App() {
       {/* TOPBAR */}
       <div className="topbar">
         <div className="topbar-logo">CINÉMARATHON</div>
-        <div className={`global-search ${searchOpen ? 'open' : ''}`}>
-          <span className="global-search-icon">⌕</span>
-          <input
-            value={globalSearch}
-            onChange={e => setGlobalSearch(e.target.value)}
-            onFocus={() => setSearchOpen(true)}
-            onBlur={() => setTimeout(() => setSearchOpen(false), 140)}
-            placeholder="Rechercher un film, une serie, une room..."
-          />
-          {searchOpen && globalSearch.trim() && (
-            <div className="global-search-panel">
-              {searchResults.length ? searchResults.map((result, index) => (
-                <button
-                  key={`${result.type}-${result.label}-${index}`}
-                  className="global-search-result"
-                  onMouseDown={event => {
-                    event.preventDefault()
-                    result.action()
-                    setGlobalSearch('')
-                    setSearchOpen(false)
-                  }}
-                >
-                  <span>{result.type}</span>
-                  <strong>{result.label}</strong>
-                  <small>{result.meta}</small>
-                </button>
-              )) : (
-                <div className="global-search-empty">Aucun resultat dans cette salle.</div>
-              )}
-            </div>
-          )}
-        </div>
         <div className="topbar-user">
           <div className="topbar-user-wrap">
             <button className={`user-menu-btn ${settingsOpen ? 'active' : ''}`} onClick={toggleSettings}>
@@ -1472,26 +1375,6 @@ export default function App() {
         {roomMsg && !roomPanelOpen && <div className="room-msg">{roomMsg}</div>}
       </div>
 
-      <div className="app-shell">
-        <aside className="sidebar">
-          <div className="sidebar-room">
-            <span>Salle active</span>
-            <strong>{currentRoom.name}</strong>
-          </div>
-          {[
-            ['overview', '⌂ Vue d\'ensemble'],
-            ['liste', '🎬 Liste'],
-            ['dispos', '◷ Calendrier'],
-            ['stats', '▥ Statistiques'],
-            ['ranking', '♕ Classement'],
-            ['secret', '✦ Secret'],
-            ...(canManageCurrentRoom ? [['admin', '⚙ Paramètres']] : []),
-          ].map(([id, label]) => (
-            <button key={id} className={`sidebar-link ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>{label}</button>
-          ))}
-        </aside>
-        <main className="app-main">
-
       {/* NAV */}
       <nav className="nav">
         {[
@@ -1505,111 +1388,6 @@ export default function App() {
           <button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}>{label}</button>
         ))}
       </nav>
-
-      {page === 'overview' && (
-        <div className="page page-overview">
-          <section className="room-hero" style={roomBanner ? { backgroundImage: `linear-gradient(90deg, rgba(10,10,10,0.94), rgba(10,10,10,0.66)), url(${roomBanner})` } : {}}>
-            <div>
-              <div className="room-hero-kicker">Salle privee</div>
-              <h1>{currentRoom.name}</h1>
-              <p>{roomDescription}</p>
-              <div className="room-hero-meta">
-                <span>{roomMembersCount} membre{roomMembersCount > 1 ? 's' : ''}</span>
-                <span>{progressPercent}% complete</span>
-                <span>Cree le {roomCreatedLabel}</span>
-                <span>Par {roomCreatorLabel}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="dashboard-grid">
-            <div className="premium-card progress-card">
-              <div className="card-kicker">Progression</div>
-              <div className="progress-main">
-                <div className="progress-ring" style={{ '--progress': `${progressPercent * 3.6}deg` }}>
-                  <span>{progressPercent}%</span>
-                </div>
-                <div className="progress-copy">
-                  <div className="progress-track"><div style={{ width: `${progressPercent}%` }} /></div>
-                  <strong>{seenCount} / {totalItems} titres</strong>
-                  <small>{estimatedHoursLeft} heures restantes estimees</small>
-                </div>
-              </div>
-              <div className="progress-stats">
-                <span><b>{filmCount}</b> Films</span>
-                <span><b>{serieCount}</b> Series</span>
-                <span><b>{seenCount}</b> Vus</span>
-                <span><b>{remainingCount}</b> Restants</span>
-              </div>
-            </div>
-
-            <div className="premium-card goals-card">
-              <div className="card-kicker">Objectifs</div>
-              <h2>Finir avant Noel</h2>
-              <p>Objectifs de marathon visibles dans cette room.</p>
-              <div className="goal-list">
-                {(roomGoals.length ? roomGoals : [{ id: 'default', title: 'Finir avant Noel' }]).map(goal => (
-                  <div key={goal.id} className="goal-item">
-                    <span>🎯</span>
-                    <strong>{goal.title}</strong>
-                    {canDeleteCurrentRoom && goal.id !== 'default' && <button onClick={() => removeRoomGoal(goal.id)}>×</button>}
-                  </div>
-                ))}
-              </div>
-              {canDeleteCurrentRoom && (
-                <div className="goal-form">
-                  <input value={goalDraft} onChange={e => setGoalDraft(e.target.value)} placeholder="Nouvel objectif..." onKeyDown={e => e.key === 'Enter' && addRoomGoal()} />
-                  <button onClick={addRoomGoal}>Ajouter</button>
-                </div>
-              )}
-            </div>
-
-            <div className="premium-card next-card">
-              <div className="card-kicker">Prochain film</div>
-              {nextItem ? (
-                <div className="next-content">
-                  {nextItem.poster ? <img src={nextItem.poster} alt={nextItem.title} /> : <div className="next-poster-ph">🎬</div>}
-                  <div>
-                    <h2>{nextItem.title}</h2>
-                    <p>{nextItem.year || 'Annee inconnue'} · {nextItem.type === 'film' ? 'Film' : 'Serie'}{nextItem.platform ? ` · ${nextItem.platform}` : ''}</p>
-                    <small>Prochaine etape conseillee pour continuer le marathon.</small>
-                    <button onClick={() => goWatch(nextItem.id)}>▶ Demarrer la seance</button>
-                  </div>
-                </div>
-              ) : (
-                <p className="muted">Ajoute des titres pour preparer la prochaine seance.</p>
-              )}
-            </div>
-
-            <div className="premium-card members-card">
-              <div className="card-kicker">Membres</div>
-              <div className="member-list">
-                {memberPreview.map(member => (
-                  <div key={member.user_id} className="member-pill">
-                    <div className="member-avatar">{(member.pseudo || 'M')[0]?.toUpperCase()}</div>
-                    <div>
-                      <strong>{member.pseudo || 'Membre'}</strong>
-                      <small>{member.user_id === currentUser?.id ? 'En ligne' : 'Hors ligne'} · {member.role || 'membre'}</small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="premium-card activity-card">
-              <div className="card-kicker">Activite</div>
-              <div className="timeline">
-                {dashboardActivity.map(item => (
-                  <div key={item.id} className="timeline-item">
-                    <span>{item.icon}</span>
-                    <p>{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
 
       {/* ── LISTE ── */}
       {page === 'liste' && (
@@ -1959,40 +1737,6 @@ export default function App() {
         </div>
       )}
 
-      {page === 'stats' && (
-        <div className="page">
-          <h1 className="page-title">Statistiques</h1>
-          <p className="page-subtitle">Vue rapide calculee avec les donnees deja chargees de la room {currentRoom.name}</p>
-          <div className="stats-premium-grid">
-            <div className="premium-card stat-big"><span>Temps regarde</span><strong>{seenCount * 2}h</strong><small>Estimation actuelle</small></div>
-            <div className="premium-card stat-big"><span>Films vus</span><strong>{watched.filter(entry => watchlist.find(item => item.id === entry.item_id)?.type === 'film').length}</strong><small>Notes enregistrees</small></div>
-            <div className="premium-card stat-big"><span>Series vues</span><strong>{watched.filter(entry => watchlist.find(item => item.id === entry.item_id)?.type === 'serie').length}</strong><small>Episodes ou series</small></div>
-            <div className="premium-card stat-big"><span>Soirees</span><strong>{new Set(watched.map(entry => new Date(entry.watched_at).toLocaleDateString('fr-FR'))).size}</strong><small>Jours actifs</small></div>
-          </div>
-        </div>
-      )}
-
-      {page === 'ranking' && (
-        <div className="page">
-          <h1 className="page-title">Classement</h1>
-          <p className="page-subtitle">XP et badges arriveront ensuite, mais la base est prete.</p>
-          <div className="ranking-list">
-            {Object.entries(watched.reduce((acc, entry) => {
-              const key = entry.pseudo || 'Membre'
-              acc[key] = (acc[key] || 0) + 1
-              return acc
-            }, {})).sort((a, b) => b[1] - a[1]).map(([pseudo, count], index) => (
-              <div key={pseudo} className="ranking-row">
-                <span>#{index + 1}</span>
-                <strong>{pseudo}</strong>
-                <small>{count * 100} XP · {count} titre{count > 1 ? 's' : ''}</small>
-              </div>
-            ))}
-            {!watched.length && <div className="empty-state"><div className="icon">♕</div><p>Aucun classement pour le moment.</p></div>}
-          </div>
-        </div>
-      )}
-
       {page === 'secret' && (
         <div className="page">
           {!secretUnlocked ? (
@@ -2173,9 +1917,6 @@ export default function App() {
         </div>
       )}
 
-        </main>
-      </div>
-
       {patchnotesOpen && (
         <div className="patch-modal">
           <div className="patch-box">
@@ -2324,19 +2065,6 @@ const globalCss = `
           /* APP */
           .topbar {display:flex; align-items:center; justify-content:space-between; padding:16px 32px; border-bottom:1px solid var(--border); background:rgba(10,10,10,0.95); backdrop-filter:blur(10px); position:sticky; top:0; z-index:100; }
           .topbar-logo {font-family:'Playfair Display',serif; font-size:22px; font-weight:900; background:linear-gradient(135deg,var(--gold-light),var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:2px; }
-          .global-search {position:relative; width:min(460px,36vw); margin:0 24px; transition:width 0.25s ease, transform 0.25s ease; }
-          .global-search.open {width:min(560px,42vw); transform:translateY(1px); }
-          .global-search-icon {position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--gold); font-size:18px; z-index:1; }
-          .global-search input {width:100%; height:40px; border-radius:999px; border:1px solid var(--border); background:linear-gradient(180deg,rgba(26,26,26,0.94),rgba(12,12,12,0.94)); color:var(--text); outline:none; padding:0 18px 0 42px; font-size:14px; box-shadow:0 12px 40px rgba(0,0,0,0.24); transition:border-color 0.2s, box-shadow 0.2s; }
-          .global-search input:focus {border-color:rgba(201,168,76,0.65); box-shadow:0 16px 60px rgba(0,0,0,0.45), 0 0 0 3px rgba(201,168,76,0.08); }
-          .global-search-panel {position:absolute; left:0; right:0; top:calc(100% + 10px); background:rgba(17,17,17,0.98); border:1px solid var(--border); border-radius:16px; padding:8px; box-shadow:0 24px 80px rgba(0,0,0,0.72); animation:panelIn 0.18s ease both; z-index:400; }
-          .global-search-result {width:100%; display:grid; grid-template-columns:72px 1fr auto; align-items:center; gap:12px; background:transparent; border:0; color:var(--text); text-align:left; padding:10px 12px; border-radius:10px; cursor:pointer; transition:background 0.15s, transform 0.15s; }
-          .global-search-result:hover {background:rgba(201,168,76,0.1); transform:translateX(2px); }
-          .global-search-result span {font-size:10px; color:var(--gold); text-transform:uppercase; letter-spacing:1px; }
-          .global-search-result strong {font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-          .global-search-result small {color:var(--text2); font-size:12px; }
-          .global-search-empty {padding:14px; color:var(--text2); font-size:13px; text-align:center; }
-          @keyframes panelIn {from {opacity:0; transform:translateY(-6px) scale(0.98);} to {opacity:1; transform:none;}}
           .topbar-user {display:flex; align-items:center; gap:12px; }
           .topbar-user-wrap {position:relative; }
           .user-menu-btn {display:flex; align-items:center; gap:10px; background:transparent; border:1px solid transparent; color:var(--text); border-radius:12px; padding:4px 8px 4px 4px; cursor:pointer; transition:all 0.2s; }
@@ -2395,83 +2123,14 @@ const globalCss = `
           .room-msg {width:100%; color:var(--red); font-size:12px; }
           .room-title {margin-bottom:8px; color:var(--gold); }
 
-          .app-shell {display:grid; grid-template-columns:248px minmax(0,1fr); align-items:start; min-height:calc(100vh - 128px); }
-          .sidebar {position:sticky; top:69px; min-height:calc(100vh - 69px); border-right:1px solid var(--border); background:linear-gradient(180deg,rgba(17,17,17,0.96),rgba(10,10,10,0.96)); padding:22px 14px; }
-          .sidebar-room {padding:14px 14px 16px; margin-bottom:14px; border:1px solid var(--border); border-radius:14px; background:rgba(255,255,255,0.025); }
-          .sidebar-room span {display:block; color:var(--text2); font-size:10px; text-transform:uppercase; letter-spacing:2px; margin-bottom:5px; }
-          .sidebar-room strong {display:block; color:var(--gold); font-family:'Playfair Display',serif; font-size:22px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-          .sidebar-link {width:100%; text-align:left; padding:13px 14px; margin-bottom:6px; border:1px solid transparent; border-radius:12px; background:transparent; color:var(--text2); font-size:13px; font-weight:700; letter-spacing:0.2px; cursor:pointer; transition:all 0.18s ease; }
-          .sidebar-link:hover {color:var(--text); background:rgba(255,255,255,0.035); transform:translateX(3px); }
-          .sidebar-link.active {color:#000; background:var(--gold); border-color:var(--gold); box-shadow:0 12px 28px rgba(201,168,76,0.16); }
-          .app-main {min-width:0; animation:fadePage 0.22s ease both; }
-          @keyframes fadePage {from {opacity:0; transform:translateY(5px);} to {opacity:1; transform:none;}}
-
-          .nav {display:none; padding:0 32px; border-bottom:1px solid var(--border); background:var(--bg2); }
+          .nav {display:flex; padding:0 32px; border-bottom:1px solid var(--border); background:var(--bg2); }
           .nav-btn {padding:16px 24px; background:none; border:none; border-bottom:2px solid transparent; color:var(--text2); font-size:12px; font-weight:500; cursor:pointer; letter-spacing:2px; transition:all 0.2s; text-transform:uppercase; }
           .nav-btn.active {color:var(--gold); border-bottom-color:var(--gold); }
           .nav-btn:hover:not(.active) {color:var(--text); }
 
-          .page {padding:32px; max-width:1180px; margin:0 auto; }
+          .page {padding:32px; max-width:1100px; margin:0 auto; }
           .page-title {font-family:'Playfair Display',serif; font-size:32px; font-weight:700; margin-bottom:8px; }
           .page-subtitle {color:var(--text2); font-size:14px; margin-bottom:28px; }
-
-          /* OVERVIEW */
-          .page-overview {max-width:1280px; }
-          .room-hero {min-height:280px; border:1px solid var(--border); border-radius:18px; padding:34px; display:flex; align-items:flex-end; background:linear-gradient(135deg,rgba(34,30,18,0.88),rgba(10,10,10,0.96)); background-size:cover; background-position:center; box-shadow:0 26px 90px rgba(0,0,0,0.34); overflow:hidden; position:relative; }
-          .room-hero:after {content:''; position:absolute; inset:auto 0 0 0; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:0.65; }
-          .room-hero > div {position:relative; z-index:1; max-width:780px; }
-          .room-hero-kicker, .card-kicker {color:var(--gold); font-size:11px; text-transform:uppercase; letter-spacing:2.4px; margin-bottom:9px; font-weight:800; }
-          .room-hero h1 {font-family:'Playfair Display',serif; font-size:58px; line-height:0.95; margin-bottom:12px; color:var(--text); }
-          .room-hero p {color:var(--text2); font-size:16px; line-height:1.55; max-width:620px; }
-          .room-hero-meta {display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
-          .room-hero-meta span {border:1px solid var(--border); background:rgba(10,10,10,0.55); color:var(--text); padding:8px 12px; border-radius:999px; font-size:12px; }
-          .dashboard-grid {display:grid; grid-template-columns:1.25fr 0.85fr; gap:16px; margin-top:16px; }
-          .premium-card {background:linear-gradient(180deg,rgba(26,26,26,0.96),rgba(14,14,14,0.98)); border:1px solid var(--border); border-radius:16px; padding:22px; box-shadow:0 18px 55px rgba(0,0,0,0.28); transition:transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
-          .premium-card:hover {transform:translateY(-5px); border-color:rgba(201,168,76,0.48); box-shadow:0 24px 70px rgba(0,0,0,0.42); }
-          .progress-main {display:grid; grid-template-columns:132px 1fr; align-items:center; gap:20px; }
-          .progress-ring {width:132px; height:132px; border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--gold) var(--progress), rgba(255,255,255,0.07) 0); position:relative; }
-          .progress-ring:before {content:''; position:absolute; inset:10px; border-radius:50%; background:var(--bg2); border:1px solid var(--border); }
-          .progress-ring span {position:relative; color:var(--gold); font-family:'Playfair Display',serif; font-size:31px; font-weight:900; }
-          .progress-copy strong {display:block; font-family:'Playfair Display',serif; font-size:26px; margin:12px 0 4px; }
-          .progress-copy small, .muted {color:var(--text2); font-size:13px; }
-          .progress-track {height:10px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,0.07); }
-          .progress-track div {height:100%; border-radius:999px; background:linear-gradient(90deg,var(--gold-dark),var(--gold-light)); transition:width 0.65s ease; }
-          .progress-stats {display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:18px; }
-          .progress-stats span {background:rgba(255,255,255,0.035); border:1px solid var(--border); border-radius:12px; padding:10px; color:var(--text2); font-size:12px; text-align:center; }
-          .progress-stats b {display:block; color:var(--gold); font-family:'Playfair Display',serif; font-size:21px; }
-          .goals-card h2, .next-card h2 {font-family:'Playfair Display',serif; color:var(--text); font-size:27px; margin-bottom:8px; }
-          .goals-card p {color:var(--text2); font-size:13px; margin-bottom:14px; }
-          .goal-list {display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
-          .goal-item {display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.035); border:1px solid var(--border); border-radius:12px; padding:11px 12px; }
-          .goal-item strong {flex:1; font-size:13px; }
-          .goal-item button {width:26px; height:26px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; }
-          .goal-form {display:grid; grid-template-columns:1fr auto; gap:8px; }
-          .goal-form input {min-width:0; border:1px solid var(--border); background:var(--bg3); color:var(--text); border-radius:10px; padding:11px 12px; outline:none; }
-          .goal-form button, .next-content button {border:0; background:var(--gold); color:#000; border-radius:10px; padding:11px 14px; font-weight:900; cursor:pointer; transition:transform 0.16s, background 0.16s; }
-          .goal-form button:hover, .next-content button:hover {background:var(--gold-light); transform:scale(1.03); }
-          .next-card {grid-column:1 / span 1; }
-          .next-content {display:grid; grid-template-columns:104px 1fr; gap:16px; align-items:center; }
-          .next-content img, .next-poster-ph {width:104px; aspect-ratio:2/3; border-radius:12px; object-fit:cover; border:1px solid var(--border); background:var(--bg3); display:grid; place-items:center; font-size:32px; }
-          .next-content p {color:var(--gold); font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-          .next-content small {display:block; color:var(--text2); line-height:1.45; margin-bottom:14px; }
-          .members-card, .activity-card {min-height:220px; }
-          .member-list {display:flex; flex-direction:column; gap:10px; }
-          .member-pill {display:flex; align-items:center; gap:11px; border:1px solid var(--border); background:rgba(255,255,255,0.03); border-radius:13px; padding:10px; }
-          .member-avatar {width:38px; height:38px; border-radius:50%; background:var(--gold); color:#000; display:grid; place-items:center; font-weight:900; }
-          .member-pill strong {display:block; font-size:14px; }
-          .member-pill small {display:block; color:var(--text2); font-size:12px; margin-top:2px; }
-          .timeline {display:flex; flex-direction:column; gap:12px; }
-          .timeline-item {display:grid; grid-template-columns:34px 1fr; gap:10px; align-items:start; }
-          .timeline-item span {width:34px; height:34px; border-radius:50%; border:1px solid var(--border); display:grid; place-items:center; background:rgba(201,168,76,0.08); }
-          .timeline-item p {color:var(--text2); font-size:13px; line-height:1.45; padding-top:7px; }
-          .stats-premium-grid {display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
-          .stat-big span {color:var(--text2); font-size:12px; text-transform:uppercase; letter-spacing:1px; }
-          .stat-big strong {display:block; color:var(--gold); font-family:'Playfair Display',serif; font-size:42px; margin:8px 0; }
-          .stat-big small {color:var(--text2); }
-          .ranking-list {display:flex; flex-direction:column; gap:10px; }
-          .ranking-row {display:grid; grid-template-columns:56px 1fr auto; align-items:center; gap:14px; border:1px solid var(--border); background:var(--bg2); border-radius:14px; padding:14px 16px; }
-          .ranking-row span {color:var(--gold); font-family:'Playfair Display',serif; font-size:22px; font-weight:900; }
-          .ranking-row small {color:var(--text2); }
 
           /* STATS */
           .stats-row {display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
@@ -2484,10 +2143,9 @@ const globalCss = `
           .filter-btn {padding:8px 18px; border:1px solid var(--border); background:none; color:var(--text2); border-radius:20px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all 0.2s; }
           .filter-btn.active, .filter-btn:hover {background:var(--gold); color:#000; border-color:var(--gold); font-weight:600; }
           .watchlist-grid {display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
-          .wl-card {background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s; cursor:pointer; position:relative; }
-          .wl-card:hover {transform:translateY(-5px); border-color:var(--gold); box-shadow:0 18px 45px rgba(201,168,76,0.12); }
-          .wl-card-poster {width:100%; aspect-ratio:2/3; object-fit:cover; display:block; transition:transform 0.28s ease, filter 0.28s ease; }
-          .wl-card:hover .wl-card-poster {transform:scale(1.055); filter:saturate(1.08) contrast(1.04); }
+          .wl-card {background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:transform 0.2s,border-color 0.2s; cursor:pointer; position:relative; }
+          .wl-card:hover {transform:translateY(-4px); border-color:var(--gold); }
+          .wl-card-poster {width:100%; aspect-ratio:2/3; object-fit:cover; display:block; }
           .wl-card-poster-placeholder {width:100%; aspect-ratio:2/3; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:36px; }
           .wl-card-info {padding:10px; }
           .wl-card-title {font-size:13px; font-weight:600; line-height:1.3; margin-bottom:3px; }
@@ -2768,26 +2426,6 @@ const globalCss = `
           .nav {padding:0 8px; }
           .nav-btn {padding:14px 10px; font-size:10px; letter-spacing:1px; }
           .page {padding:20px 16px; }
-          .topbar {flex-wrap:wrap; gap:12px; }
-          .topbar-logo {font-size:19px; }
-          .global-search, .global-search.open {order:3; width:100%; margin:0; }
-          .global-search-result {grid-template-columns:58px 1fr; }
-          .global-search-result small {grid-column:2; }
-          .app-shell {display:block; }
-          .sidebar {position:sticky; top:64px; min-height:0; z-index:90; display:flex; gap:8px; overflow-x:auto; padding:10px 12px; border-right:0; border-bottom:1px solid var(--border); }
-          .sidebar-room {display:none; }
-          .sidebar-link {white-space:nowrap; width:auto; margin:0; padding:10px 12px; }
-          .sidebar-link:hover {transform:none; }
-          .room-hero {min-height:250px; padding:24px; border-radius:14px; }
-          .room-hero h1 {font-size:42px; }
-          .room-hero p {font-size:14px; }
-          .dashboard-grid {grid-template-columns:1fr; }
-          .progress-main {grid-template-columns:1fr; justify-items:start; }
-          .progress-stats, .stats-premium-grid {grid-template-columns:repeat(2,1fr); }
-          .next-content {grid-template-columns:84px 1fr; }
-          .next-content img, .next-poster-ph {width:84px; }
-          .ranking-row {grid-template-columns:46px 1fr; }
-          .ranking-row small {grid-column:2; }
           .watch-container {max-width:100%; }
           .carousel-arrow {font-size:44px; padding:0 4px; }
   }
