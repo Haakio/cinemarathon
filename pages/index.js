@@ -1849,6 +1849,7 @@ export default function App() {
                 <select className="admin-select" value={addType} onChange={e => setAddType(e.target.value)}>
                   <option value="film">🎬 Film</option>
                   <option value="serie">📺 Série</option>
+                  <option value="anime">🍥 Anime</option>
                 </select>
               </div>
               <div className="admin-form-group"><label>URL de l'affiche (optionnel)</label><input className="admin-input" value={addPoster} onChange={e => setAddPoster(e.target.value)} placeholder="https://image.tmdb.org/…" /></div>
