@@ -1397,13 +1397,13 @@ export default function App() {
           <p className="page-subtitle">{watchlist.length > 0 ? `${seenItemIds.length} / ${watchlist.length} visionné${seenItemIds.length > 1 ? 's' : ''}` : "Ajoutez des titres depuis l'onglet Admin"}</p>
           <div className="stats-row">
             {[['Titres', watchlist.length], ['Vus', seenItemIds.length], ['Restants', watchlist.length - seenItemIds.length],
-            ['Films', watchlist.filter(w => w.type === 'film').length], ['Séries', watchlist.filter(w => w.type === 'serie').length]
+            ['Films', watchlist.filter(w => w.type === 'film').length], ['Séries', watchlist.filter(w => w.type === 'serie').length], ['🍥 Animes', watchlist.filter(w => w.type === 'anime').length]
             ].map(([lbl, val]) => (
               <div key={lbl} className="stat-chip"><div className="val">{val}</div><div className="lbl">{lbl}</div></div>
             ))}
           </div>
           <div className="list-filters">
-            {[['all', 'Tous'], ['film', 'Films'], ['serie', 'Séries'], ['unseen', 'Non vus'], ['seen', 'Vus']].map(([f, label]) => (
+            {[['all', 'Tous'], ['film', 'Films'], ['serie', 'Séries'], ['anime', '🍥 Animes'], ['unseen', 'Non vus'], ['seen', 'Vus']].map(([f, label]) => (
               <button key={f} className={`filter-btn ${listeFilter === f ? 'active' : ''}`} onClick={() => setListeFilter(f)}>{label}</button>
             ))}
           </div>
@@ -1421,11 +1421,11 @@ export default function App() {
                       ? <img className="wl-card-poster" src={item.poster} alt={item.title} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }} />
                       : null}
                     <div className="wl-card-poster-placeholder" style={item.poster ? { display: 'none' } : {}}>
-                      {item.type === 'film' ? '🎬' : '📺'}
+                      {item.type === 'film' ? '🎬' : item.type === 'anime' ? '🍥' : '📺'}
                     </div>
                     <div className="wl-card-info">
                       <div className="wl-card-title">{item.title}{item.year ? <span style={{ color: 'var(--text2)', fontWeight: 400, fontSize: '11px' }}> ({item.year})</span> : null}</div>
-                      <div className="wl-card-type">{item.type === 'film' ? 'Film' : 'Série'}{myR ? <span style={{ color: 'var(--gold)' }}> · ★ {myR.rating}/10</span> : null}</div>
+                      <div className="wl-card-type">{item.type === 'film' ? 'Film' : item.type === 'anime' ? 'Anime' : 'Série'}{myR ? <span style={{ color: 'var(--gold)' }}> · ★ {myR.rating}/10</span> : null}</div>
                     </div>
                   </div>
                 )
