@@ -47,7 +47,7 @@ function downscaleImage(file, size = 128) {
  * Remplace l'ancien dropdown paramètres ET le popup patchnotes.
  */
 export default function ProfileModal({
-  social, currentUser, onClose, initialTab = 'profil',
+  social, currentUser, onClose, initialTab = 'profil', voteNotice = null,
   watchlist, watched, availability, chatMessages,
   chatEnabled, onChatPreference, onLogout,
 }) {
@@ -344,6 +344,28 @@ export default function ProfileModal({
         {/* ── NOTIFICATIONS ── */}
         {tab === 'notifications' && (
           <div>
+            {voteNotice && (
+              <>
+                <h4 className="profile-section-title">Vote de séance</h4>
+                <div className="friend-row">
+                  <span style={{ fontSize: '20px' }}>🗳️</span>
+                  <div className="friend-name">
+                    {voteNotice.myBallot
+                      ? 'Un vote est en cours — vous avez déjà voté.'
+                      : 'Un vote est en cours : choisissez le prochain film !'}
+                    <small style={{ display: 'block', color: 'var(--text3)' }}>
+                      Fin : {formatDate(voteNotice.endsAt)} à {new Date(voteNotice.endsAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </small>
+                  </div>
+                  <div className="friend-actions">
+                    <button className="friend-accept" onClick={voteNotice.onGo}>
+                      {voteNotice.myBallot ? 'Voir' : 'Voter'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
             {incoming.length > 0 && (
               <>
                 <h4 className="profile-section-title">Demandes d'amis</h4>

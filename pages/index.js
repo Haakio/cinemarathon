@@ -6,6 +6,7 @@ import { usePageVisible } from '../hooks/usePageVisible'
 import { useMarathon } from '../hooks/useMarathon'
 import { useChat } from '../hooks/useChat'
 import { useSocial } from '../hooks/useSocial'
+import { useVote } from '../hooks/useVote'
 
 // Layout
 import Header from '../components/layout/Header'
@@ -90,6 +91,10 @@ export default function App() {
 
   const chat = useChat({ authed, currentUser, currentRoomId, pageVisible, onError: showToast })
   const social = useSocial({ authed, currentUser, onError: showToast })
+  const voteApi = useVote({ authed, currentRoomId, currentUser, onError: showToast })
+
+  // Pastille de notifications : patchnotes + demandes d'amis + vote en attente
+  const totalUnread = social.unreadCount + (voteApi.voteOpen && !voteApi.myBallot ? 1 : 0)
 
   // ── Cycle de vie ────────────────────────────────────────
   useEffect(() => { setMounted(true) }, [])
@@ -272,7 +277,7 @@ export default function App() {
           onToggleSidebar={() => setSidebarOpen(open => !open)}
           onLogout={logout}
           profile={social.profile}
-          unreadCount={social.unreadCount}
+          unreadCount={totalUnread}
           onOpenProfile={() => setProfileOpen(true)}
         />
 
@@ -313,6 +318,7 @@ export default function App() {
                 onWatch={goWatch}
                 onOpenDetails={openDetails}
                 avatarMap={social.avatarMap}
+                voteApi={voteApi}
               />
             )}
             {view === VIEWS.LISTE && (
@@ -388,6 +394,8 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentRoomId={currentRoomId}
                 watchlist={watchlist}
+                watched={watched}
+                voteApi={voteApi}
                 roomMembers={roomMembers}
                 setRoomMembers={setRoomMembers}
                 canDeleteCurrentRoom={canDeleteCurrentRoom}
@@ -436,6 +444,11 @@ export default function App() {
         <ProfileModal
           social={social}
           currentUser={currentUser}
+          voteNotice={voteApi.voteOpen && voteApi.vote ? {
+            myBallot: Boolean(voteApi.myBallot),
+            endsAt: voteApi.vote.ends_at,
+            onGo: () => { setProfileOpen(false); setView(VIEWS.OVERVIEW) },
+          } : null}
           onClose={() => setProfileOpen(false)}
           watchlist={watchlist}
           watched={watched}

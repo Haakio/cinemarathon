@@ -64,6 +64,29 @@ export const VIEWS = {
   PARAMETRES: 'parametres',
 }
 
+/**
+ * Configuration du tie-break "Jimmy" (vidéo fond vert).
+ * Déposez vos deux prises dans public/jimmy/ :
+ *  - left.mp4  : vous entrez dans la porte de GAUCHE
+ *  - right.mp4 : vous entrez dans la porte de DROITE
+ * Les zones (en % de la vidéo) délimitent les panneaux verts où les
+ * posters sont incrustés — ajustez-les à votre cadrage.
+ * Si les vidéos sont absentes, une roulette animée prend le relais.
+ */
+export const JIMMY_CONFIG = {
+  videoLeft: '/jimmy/left.mp4',
+  videoRight: '/jimmy/right.mp4',
+  buttonLabel: 'Laisser Jimmy choisir 🚪',
+  // Zones des panneaux verts, en pourcentage des dimensions de la vidéo
+  zones: {
+    left: { x: 8, y: 18, w: 26, h: 62 },
+    right: { x: 66, y: 18, w: 26, h: 62 },
+  },
+  // Sensibilité du fond vert (plus haut = plus strict)
+  greenDominance: 1.35,
+  greenMin: 80,
+}
+
 /** Emojis d'avatar proposés (validés aussi côté serveur). */
 export const AVATAR_EMOJIS = ['🎬', '🍿', '📺', '🎭', '🎥', '⭐', '🦸', '🧙', '👽', '🤖', '🐉', '🕷️', '🃏', '🔥', '💀', '👑']
 
