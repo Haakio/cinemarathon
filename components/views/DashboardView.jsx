@@ -14,7 +14,7 @@ import { buildActivity, buildMembers, getNextItem, getProgress } from '../../uti
  */
 export default function DashboardView({
   currentRoom, currentUser, watchlist, watched, availability, chatMessages, roomMembers,
-  goal, onSaveGoal, onWatch, onOpenDetails,
+  goal, onSaveGoal, onWatch, onOpenDetails, avatarMap,
 }) {
   const progress = useMemo(() => getProgress(watchlist, watched), [watchlist, watched])
   const nextItem = useMemo(() => getNextItem(watchlist, watched), [watchlist, watched])
@@ -38,7 +38,7 @@ export default function DashboardView({
         </div>
         <div className="dash-side">
           <ActivityFeed activity={activity} />
-          <MembersCard members={members} />
+          <MembersCard members={members} avatarMap={avatarMap} />
         </div>
       </div>
     </>

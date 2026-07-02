@@ -20,19 +20,29 @@ export function useSocial({ authed, currentUser, onError }) {
   const [friends, setFriends] = useState([])
   const [incoming, setIncoming] = useState([])
   const [outgoing, setOutgoing] = useState([])
+  const [avatarMap, setAvatarMap] = useState({})
   const [notifSeenAt, setNotifSeenAt] = useState(null)
 
   const loadSocial = useCallback(async () => {
     if (!authed) return
     try {
-      const [me, friendData] = await Promise.all([
+      const [me, friendData, avatarData] = await Promise.all([
         api('GET', '/auth/profile'),
         api('GET', '/auth/friends'),
+        api('GET', '/auth/avatars'),
       ])
       setProfile(me)
       setFriends(friendData.friends || [])
       setIncoming(friendData.incoming || [])
       setOutgoing(friendData.outgoing || [])
+      // Map de lookup : par userId ET par pseudo (les données du marathon
+      // ne portent parfois que le pseudo)
+      const map = {}
+      ;(avatarData.avatars || []).forEach(a => {
+        map[a.userId] = a
+        map[(a.pseudo || '').toLowerCase()] = a
+      })
+      setAvatarMap(map)
     } catch { }
   }, [authed])
 
@@ -48,12 +58,21 @@ export function useSocial({ authed, currentUser, onError }) {
     try {
       await api('POST', '/auth/profile', { avatarEmoji, avatarHue, avatarUrl })
       setProfile(prev => ({ ...(prev || {}), avatarEmoji, avatarHue, avatarUrl }))
+      // Mise à jour immédiate du map partagé (membres, classement...)
+      if (currentUser) {
+        const entry = { userId: currentUser.id, pseudo: currentUser.pseudo, emoji: avatarEmoji, hue: avatarHue, url: avatarUrl }
+        setAvatarMap(prev => ({
+          ...prev,
+          [currentUser.id]: entry,
+          [(currentUser.pseudo || '').toLowerCase()]: entry,
+        }))
+      }
       return true
     } catch (e) {
       onError?.('Profil: ' + e.message)
       return false
     }
-  }, [onError])
+  }, [onError, currentUser])
 
   // ── Amis ────────────────────────────────────────────────
   const sendFriendRequest = useCallback(async pseudo => {
@@ -115,7 +134,7 @@ export function useSocial({ authed, currentUser, onError }) {
   }, [currentUser])
 
   return {
-    profile, friends, incoming, outgoing,
+    profile, friends, incoming, outgoing, avatarMap,
     updateAvatar, sendFriendRequest, acceptFriend, declineFriend, removeFriend, searchMembers,
     unreadCount, unreadPatchnotes, notifSeenAt, markNotificationsSeen,
     reload: loadSocial,

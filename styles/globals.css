@@ -525,6 +525,7 @@ a { color: inherit; }
 
 /* Membres */
 .member-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+.member-avatar-wrap { position: relative; flex-shrink: 0; }
 .member-avatar {
   width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; color: #000;
   display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;
@@ -1019,6 +1020,7 @@ a { color: inherit; }
 .chat-meta span { font-size: 11px; color: var(--gold); font-weight: 700; }
 .chat-meta small { font-size: 10px; color: var(--text3); }
 .chat-message.mine .chat-meta { justify-content: flex-end; }
+.chat-line { display: flex; align-items: flex-end; gap: 7px; }
 .chat-bubble-text {
   padding: 9px 13px; border-radius: 13px 13px 13px 4px; font-size: 13px; line-height: 1.45;
   background: var(--bg3); border: 1px solid var(--border); word-break: break-word;

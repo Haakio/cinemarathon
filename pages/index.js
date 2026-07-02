@@ -312,6 +312,7 @@ export default function App() {
                 onSaveGoal={saveGoal}
                 onWatch={goWatch}
                 onOpenDetails={openDetails}
+                avatarMap={social.avatarMap}
               />
             )}
             {view === VIEWS.LISTE && (
@@ -369,6 +370,7 @@ export default function App() {
                 watched={watched}
                 availability={availability}
                 chatMessages={chat.chatMessages}
+                avatarMap={social.avatarMap}
               />
             )}
             {view === VIEWS.DISCUSSIONS && (
@@ -447,7 +449,7 @@ export default function App() {
       {chat.chatPromptVisible && <ChatConsentModal onChoose={chat.setChatPreference} />}
 
       {/* Widgets flottants */}
-      <ChatWidget chat={chat} currentRoom={currentRoom} currentUser={currentUser} />
+      <ChatWidget chat={chat} currentRoom={currentRoom} currentUser={currentUser} avatarMap={social.avatarMap} />
       <FeedbackWidget currentRoom={currentRoom} showToast={showToast} />
       <Toast message={toast} visible={toastVisible} />
     </>

@@ -1,10 +1,11 @@
+import Avatar from './Avatar'
 import { formatTime } from '../../utils/format'
 
 /**
  * Widget chat flottant. Le SYSTÈME est inchangé (mêmes endpoints, même
  * polling via useChat) — seule l'apparence a été retravaillée.
  */
-export default function ChatWidget({ chat, currentRoom, currentUser }) {
+export default function ChatWidget({ chat, currentRoom, currentUser, avatarMap = {} }) {
   const {
     chatEnabled, chatOpen, setChatOpen,
     chatMessages, chatInput, setChatInput, chatTypingUsers,
@@ -32,15 +33,24 @@ export default function ChatWidget({ chat, currentRoom, currentUser }) {
           <div className="chat-messages" ref={chatMessagesRef}>
                 {chatMessages.length === 0 ? (
                   <div className="chat-empty">Aucun message dans cette room.</div>
-                ) : chatMessages.map(msg => (
-                  <div key={msg.id} className={`chat-message ${msg.user_id === currentUser?.id ? 'mine' : ''}`}>
-                    <div className="chat-meta">
-                      <span>{msg.pseudo || 'Membre'}</span>
-                      <small>{formatTime(msg.created_at)}</small>
+                ) : chatMessages.map(msg => {
+                  const mine = msg.user_id === currentUser?.id
+                  const custom = avatarMap[msg.user_id] || avatarMap[(msg.pseudo || '').toLowerCase()] || {}
+                  return (
+                    <div key={msg.id} className={`chat-message ${mine ? 'mine' : ''}`}>
+                      <div className="chat-meta">
+                        <span>{msg.pseudo || 'Membre'}</span>
+                        <small>{formatTime(msg.created_at)}</small>
+                      </div>
+                      <div className="chat-line">
+                        {!mine && (
+                          <Avatar pseudo={msg.pseudo} emoji={custom.emoji || ''} hue={custom.hue ?? null} url={custom.url || ''} size={24} />
+                        )}
+                        <div className="chat-bubble-text">{msg.message}</div>
+                      </div>
                     </div>
-                    <div className="chat-bubble-text">{msg.message}</div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               <div className={`chat-typing ${chatTypingUsers.length ? 'show' : ''}`}>
                 {chatTypingUsers.length ? `${chatTypingUsers[0].pseudo} écrit` : ''}

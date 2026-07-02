@@ -1,14 +1,14 @@
 import { useMemo } from 'react'
+import Avatar from '../widgets/Avatar'
 import { buildLeaderboard } from '../../utils/stats'
 import { buildBadgeContext, computeBadges } from '../../lib/badges'
-import { initials, pseudoHue } from '../../utils/format'
 
 /**
  * Classement : podium, liste XP, badges du membre courant.
  * Entièrement dérivé des avis existants — l'XP est calculée côté client
  * (50 XP par titre vu, 15 par commentaire, 10 par note).
  */
-export default function LeaderboardView({ currentRoom, currentUser, watchlist, watched, availability, chatMessages }) {
+export default function LeaderboardView({ currentRoom, currentUser, watchlist, watched, availability, chatMessages, avatarMap = {} }) {
   const leaderboard = useMemo(() => buildLeaderboard({ watchlist, watched }), [watchlist, watched])
   const podium = leaderboard.slice(0, 3)
   const isMe = row => row.userId === currentUser?.id ||
@@ -20,9 +20,8 @@ export default function LeaderboardView({ currentRoom, currentUser, watchlist, w
     watchlist, watched, availability, chatMessages,
   })), [currentUser, watchlist, watched, availability, chatMessages])
 
-  const avatarStyle = pseudo => ({
-    background: `linear-gradient(135deg, hsl(${pseudoHue(pseudo)}, 45%, 62%), hsl(${pseudoHue(pseudo)}, 50%, 40%))`,
-  })
+  const avatarOf = row =>
+    avatarMap[row.userId] || avatarMap[(row.pseudo || '').toLowerCase()] || {}
 
   // Ordre visuel du podium : 2e, 1er, 3e
   const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean)
@@ -45,22 +44,34 @@ export default function LeaderboardView({ currentRoom, currentUser, watchlist, w
         <>
           {podium.length > 1 && (
             <div className="podium anim-up-1">
-              {podiumOrder.map(row => (
-                <div className={`podium-slot ${rankClass(row)}`} key={row.pseudo}>
-                  <div className="podium-avatar" style={avatarStyle(row.pseudo)}>{initials(row.pseudo)}</div>
-                  <div className="podium-name">{row.pseudo}</div>
-                  <div className="podium-xp">{row.xp} XP</div>
-                  <div className="podium-base">{rankNumber(row)}</div>
-                </div>
-              ))}
+              {podiumOrder.map(row => {
+                const custom = avatarOf(row)
+                return (
+                  <div className={`podium-slot ${rankClass(row)}`} key={row.pseudo}>
+                    <Avatar
+                      className="podium-avatar"
+                      pseudo={row.pseudo}
+                      emoji={custom.emoji || ''}
+                      hue={custom.hue ?? null}
+                      url={custom.url || ''}
+                      size={row === podium[0] ? 74 : 56}
+                    />
+                    <div className="podium-name">{row.pseudo}</div>
+                    <div className="podium-xp">{row.xp} XP</div>
+                    <div className="podium-base">{rankNumber(row)}</div>
+                  </div>
+                )
+              })}
             </div>
           )}
 
           <div className="anim-up-2">
-            {leaderboard.map((row, index) => (
+            {leaderboard.map((row, index) => {
+              const custom = avatarOf(row)
+              return (
               <div className={`lb-row ${isMe(row) ? 'me' : ''}`} key={row.pseudo}>
                 <div className="lb-rank">{index + 1}</div>
-                <div className="member-avatar" style={avatarStyle(row.pseudo)}>{initials(row.pseudo)}</div>
+                <Avatar pseudo={row.pseudo} emoji={custom.emoji || ''} hue={custom.hue ?? null} url={custom.url || ''} size={36} />
                 <div className="lb-body">
                   <div className="lb-name">{row.pseudo}{isMe(row) ? ' (toi)' : ''}</div>
                   <div className="lb-details">
@@ -71,7 +82,8 @@ export default function LeaderboardView({ currentRoom, currentUser, watchlist, w
                 </div>
                 <div className="lb-xp">{row.xp} XP</div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </>
       )}
