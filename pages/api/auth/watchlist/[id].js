@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
-    const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl } = req.body
+    const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast } = req.body
 
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
@@ -44,6 +44,13 @@ export default async function handler(req, res) {
           year: year || '',
           platform: platform?.trim() || '',
           watchUrl: watchUrl?.trim() || '',
+          // Métadonnées TMDB (tmdbId défini => tentative de mise à jour étendue)
+          synopsis: synopsis || '',
+          runtime: parseInt(runtime, 10) || 0,
+          genres: genres || '',
+          tmdbId: tmdbId !== undefined ? String(tmdbId || '') : undefined,
+          backdrop: backdrop || '',
+          castJson: Array.isArray(cast) ? JSON.stringify(cast.slice(0, 10)) : '[]',
         })
 
         return res.status(200).json({ ok: true })

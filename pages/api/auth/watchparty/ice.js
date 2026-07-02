@@ -1,69 +1,7 @@
-import { requireAuth } from '../../../../lib/auth'
-
-const fallbackIceServers = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-]
-
-function parseTurnUrls(value) {
-  return (value || '')
-    .split(',')
-    .map(url => url.trim())
-    .filter(Boolean)
-    .map(url => url.startsWith('turn:') || url.startsWith('turns:') ? url : `turn:${url}`)
-}
-
-async function getMeteredIceServers() {
-  if (!process.env.METERED_TURN_API_URL) return null
-
-  const response = await fetch(process.env.METERED_TURN_API_URL)
-  if (!response.ok) throw new Error('Metered TURN unavailable')
-
-  const iceServers = await response.json()
-  if (!Array.isArray(iceServers) || iceServers.length === 0) {
-    throw new Error('Metered TURN response invalid')
-  }
-
-  return iceServers
-}
-
-export default async function handler(req, res) {
-  const user = requireAuth(req)
-  if (!user) return res.status(401).json({ error: 'Non autorise' })
-  if (req.method !== 'GET') return res.status(405).end()
-
-  try {
-    const meteredIceServers = await getMeteredIceServers()
-    if (meteredIceServers) {
-      return res.status(200).json({
-        iceServers: meteredIceServers,
-        iceTransportPolicy: 'relay',
-        turnEnabled: true,
-        provider: 'metered',
-      })
-    }
-  } catch (err) {
-    console.error(err)
-  }
-
-  const turnUrls = parseTurnUrls(process.env.TURN_URLS)
-  const iceServers = [...fallbackIceServers]
-
-  const turnEnabled = turnUrls.length > 0 && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL
-
-  if (turnEnabled) {
-    iceServers.push({
-      urls: turnUrls,
-      username: process.env.TURN_USERNAME,
-      credential: process.env.TURN_CREDENTIAL,
-    })
-  }
-
-  return res.status(200).json({
-    iceServers,
-    iceTransportPolicy: turnEnabled ? 'relay' : 'all',
-    turnEnabled,
-    provider: turnEnabled ? 'static' : 'fallback',
-  })
+/**
+ * FONCTIONNALITÉ SUPPRIMÉE — Watch Party (zone secrète) retirée du site.
+ * Ce fichier (et le dossier watchparty/) peut être supprimé.
+ */
+export default function handler(req, res) {
+  return res.status(410).json({ error: 'Fonctionnalité retirée' })
 }

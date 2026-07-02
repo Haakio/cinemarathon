@@ -1,0 +1,81 @@
+import { createFilmPost, deleteFilmPost, getFilmPost, getFilmPosts, hasRoomAccess } from '../../../lib/db'
+import { requireAuth } from '../../../lib/auth'
+
+function uid() { return Math.random().toString(36).substr(2, 12) }
+
+/**
+ * Discussions par film (style forum).
+ * GET    ?roomId=            → posts + réponses de la room (chargé à l'ouverture de la vue)
+ * POST   {roomId, itemId?, parentId?, title?, body} → nouveau post ou réponse
+ * DELETE {id, roomId}        → suppression (auteur ou admin global)
+ */
+export default async function handler(req, res) {
+  const user = requireAuth(req)
+  if (!user) return res.status(401).json({ error: 'Non autorisé' })
+
+  try {
+    if (req.method === 'GET') {
+      const { roomId = 'marvel' } = req.query
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+      const rows = await getFilmPosts(roomId)
+
+      // Dédoublonnage des avatars : envoyés une seule fois par membre
+      // (un avatar importé en base64 peut peser 100+ Ko — pas question de
+      // le répéter sur chacun de ses posts).
+      const avatars = {}
+      const posts = rows.map(row => {
+        const { avatar_emoji, avatar_hue, avatar_url, ...post } = row
+        if (!(post.user_id in avatars)) {
+          avatars[post.user_id] = {
+            emoji: avatar_emoji || '',
+            hue: avatar_hue ?? null,
+            url: avatar_url || '',
+          }
+        }
+        return post
+      })
+      return res.status(200).json({ posts, avatars })
+    }
+
+    if (req.method === 'POST') {
+      const { roomId = 'marvel', itemId, parentId, title, body } = req.body
+      if (!body?.trim()) return res.status(400).json({ error: 'Le message est vide' })
+      if (body.length > 3000) return res.status(400).json({ error: 'Message trop long (max 3000)' })
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+
+      const post = {
+        id: uid(),
+        roomId,
+        itemId: itemId || null,
+        parentId: parentId || null,
+        userId: user.id,
+        pseudo: user.pseudo,
+        title: (title || '').trim().slice(0, 140),
+        body: body.trim(),
+      }
+      await createFilmPost(post)
+      return res.status(201).json({ ok: true, post })
+    }
+
+    if (req.method === 'DELETE') {
+      const { id, roomId = 'marvel' } = req.body
+      if (!id) return res.status(400).json({ error: 'id requis' })
+      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+
+      const post = await getFilmPost(id)
+      if (!post) return res.status(404).json({ error: 'Post introuvable' })
+
+      const isOwner = post.user_id === user.id
+      const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
+      if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Interdit' })
+
+      await deleteFilmPost(id) // supprime aussi les réponses
+      return res.status(200).json({ ok: true })
+    }
+
+    return res.status(405).end()
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Erreur serveur' })
+  }
+}

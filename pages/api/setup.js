@@ -123,6 +123,39 @@ export default async function handler(req, res) {
       )
     `
     await sql`
+      CREATE TABLE IF NOT EXISTS friendships (
+        requester_id TEXT NOT NULL,
+        addressee_id TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (requester_id, addressee_id)
+      )
+    `
+    await sql`
+      CREATE TABLE IF NOT EXISTS film_posts (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        item_id TEXT,
+        parent_id TEXT,
+        user_id TEXT NOT NULL,
+        pseudo TEXT,
+        title TEXT DEFAULT '',
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_emoji TEXT DEFAULT ''`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_hue INTEGER`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT ''`
+    await sql`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        user_id TEXT PRIMARY KEY,
+        code_hash TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
       INSERT INTO rooms (id, name, slug, created_by, created_at)
       VALUES ('marvel', 'Marvel', 'marvel', 'setup', NOW())
       ON CONFLICT (id) DO NOTHING
@@ -135,6 +168,13 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT true`
     await sql`ALTER TABLE watchparty_peers ADD COLUMN IF NOT EXISTS viewer_candidates TEXT DEFAULT '[]'`
     await sql`ALTER TABLE watchparty_peers ADD COLUMN IF NOT EXISTS host_candidates TEXT DEFAULT '[]'`
+    // Métadonnées TMDB (fiche film : synopsis, durée, genres, casting)
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS synopsis TEXT DEFAULT ''`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS runtime INTEGER DEFAULT 0`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS genres TEXT DEFAULT ''`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS tmdb_id TEXT DEFAULT ''`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS backdrop TEXT DEFAULT ''`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS cast_json TEXT DEFAULT '[]'`
     await sql`UPDATE watchlist SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE watched SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE rooms SET is_private = false WHERE id = 'marvel'`

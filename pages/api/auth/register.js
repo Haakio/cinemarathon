@@ -1,7 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { getUser, createUser } from '../../../lib/db'
 import { signToken } from '../../../lib/auth'
-import { v4 as uuidv4 } from 'crypto'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
 
