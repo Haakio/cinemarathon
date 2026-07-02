@@ -92,7 +92,7 @@ export default function App() {
 
   const chat = useChat({ authed, currentUser, currentRoomId, pageVisible, onError: showToast })
   const social = useSocial({ authed, currentUser, onError: showToast })
-  const voteApi = useVote({ authed, currentRoomId, currentUser, onError: showToast })
+  const voteApi = useVote({ authed, currentRoomId, currentUser, view, pageVisible, onError: showToast })
 
   // Cloche sur l'entrée "Vote film" de la sidebar : vote ouvert pas encore voté
   const voteBadge = voteApi.voteOpen && !voteApi.myBallot

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../utils/api'
+import { VIEWS } from '../utils/constants'
 
 /**
  * Vote de séance de la room.
- * Coût Neon : 1 requête au changement de room + rechargement automatique
- * à l'échéance (setTimeout local, pas de polling). La clôture est "lazy" :
- * c'est le GET qui déclenche le calcul du gagnant côté serveur.
+ * Coût Neon maîtrisé :
+ * - poll lent 45s (onglet visible) → la cloche apparaît sans refresh
+ * - poll rapide 4s UNIQUEMENT sur la page Vote avec un vote ouvert
+ *   → résultats quasi temps réel pendant qu'on les regarde
+ * - clôture "lazy" : le GET calcule le gagnant côté serveur à l'échéance
  */
-export function useVote({ authed, currentRoomId, currentUser, onError }) {
+export function useVote({ authed, currentRoomId, currentUser, view, pageVisible, onError }) {
   const [vote, setVote] = useState(null)
   const [ballots, setBallots] = useState([])
 
@@ -20,8 +23,20 @@ export function useVote({ authed, currentRoomId, currentUser, onError }) {
     } catch { }
   }, [authed, currentRoomId])
 
-  // Chargé au login / changement de room (sert aussi à la pastille de notif)
-  useEffect(() => { loadVote() }, [loadVote])
+  // Chargé au login, au changement de room, ET au retour sur l'onglet :
+  // quelqu'un qui revient d'AFK voit immédiatement la cloche si un vote
+  // a été lancé pendant son absence. Zéro polling en dehors de la page Vote.
+  useEffect(() => {
+    if (authed && pageVisible) loadVote()
+  }, [authed, pageVisible, loadVote])
+
+  // Poll rapide 4s : résultats live, seulement sur la page Vote + vote ouvert
+  useEffect(() => {
+    if (!authed || !pageVisible || view !== VIEWS.VOTE) return
+    if (!vote || vote.status !== 'open') return
+    const timer = setInterval(loadVote, 4000)
+    return () => clearInterval(timer)
+  }, [authed, pageVisible, view, vote, loadVote])
 
   // À l'échéance d'un vote ouvert : un seul rechargement (déclenche la
   // clôture serveur), programmé localement — aucun polling.
