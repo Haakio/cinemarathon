@@ -57,6 +57,7 @@ export const VIEWS = {
   REGARDER: 'regarder',
   VU: 'vu',
   CALENDRIER: 'calendrier',
+  VOTE: 'vote',
   STATS: 'stats',
   CLASSEMENT: 'classement',
   DISCUSSIONS: 'discussions',

@@ -11,10 +11,15 @@ function useCountdown(endsAt, active) {
     const compute = () => {
       const ms = new Date(endsAt).getTime() - Date.now()
       if (ms <= 0) { setLabel('Clôture...'); return }
-      const h = Math.floor(ms / 3600000)
+      const d = Math.floor(ms / 86400000)
+      const h = Math.floor((ms % 86400000) / 3600000)
       const m = Math.floor((ms % 3600000) / 60000)
       const s = Math.floor((ms % 60000) / 1000)
-      setLabel(h > 0 ? `${h}h ${String(m).padStart(2, '0')}min` : m > 0 ? `${m}min ${String(s).padStart(2, '0')}s` : `${s}s`)
+      // Unités naturelles : "14j 2h", "3h 05min", "4min 12s", "38s"
+      if (d > 0) setLabel(`${d}j ${h}h`)
+      else if (h > 0) setLabel(`${h}h ${String(m).padStart(2, '0')}min`)
+      else if (m > 0) setLabel(`${m}min ${String(s).padStart(2, '0')}s`)
+      else setLabel(`${s}s`)
     }
     compute()
     const timer = setInterval(compute, 1000)

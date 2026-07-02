@@ -71,6 +71,15 @@ const PATHS = {
       <path d="M16 5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4.5-6.2" />
     </>
   ),
+  // Vote (urne avec bulletin)
+  vote: (
+    <>
+      <path d="M4 11h16l1.5 9.5h-19L4 11z" />
+      <line x1="9.5" y1="14.5" x2="14.5" y2="14.5" />
+      <path d="M8.5 11V4.5A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.5 1.5V11" />
+      <path d="M10.5 7l1.2 1.2 2.3-2.4" />
+    </>
+  ),
   // Notifications (réserve)
   bell: (
     <>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import VoteComposer from '../cards/VoteComposer'
 import { api } from '../../utils/api'
 import { TYPE_META } from '../../utils/constants'
 
@@ -19,11 +20,6 @@ export default function AdminView({
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [msg, setMsg] = useState('')
-
-  // Vote de séance
-  const [voteItems, setVoteItems] = useState([])
-  const [voteEndsAt, setVoteEndsAt] = useState('')
-  const [voteCreating, setVoteCreating] = useState(false)
 
   // Réinitialisation de mot de passe (admin global uniquement)
   const [resetPseudo, setResetPseudo] = useState('')
@@ -158,25 +154,6 @@ export default function AdminView({
       await api('PUT', `/auth/watchlist/${id}`, { roomId: currentRoomId, dir })
       loadData()
     } catch { }
-  }
-
-  function toggleVoteItem(id) {
-    setVoteItems(prev => prev.includes(id)
-      ? prev.filter(x => x !== id)
-      : prev.length >= 5 ? prev : [...prev, id])
-  }
-
-  async function launchVote() {
-    if (voteItems.length < 2) { showToast('Choisissez au moins 2 films.'); return }
-    if (!voteEndsAt) { showToast('Choisissez une heure de fin.'); return }
-    setVoteCreating(true)
-    const ok = await voteApi.createVote(voteItems, new Date(voteEndsAt).toISOString())
-    setVoteCreating(false)
-    if (ok) {
-      setVoteItems([])
-      setVoteEndsAt('')
-      showToast('Vote lancé ! 🗳️')
-    }
   }
 
   async function generateResetCode() {
@@ -340,54 +317,20 @@ export default function AdminView({
           )}
         </div>
 
-        <div className="card anim-up-2">
-          <h2>🗳️ Vote de séance</h2>
-          {voteApi?.vote?.status === 'open' ? (
-            <>
-              <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
-                Un vote est en cours dans cette room ({voteApi?.ballots?.length ?? 0} vote{(voteApi?.ballots?.length ?? 0) > 1 ? 's' : ''}).
-                Il se clôture automatiquement à l'échéance.
-              </p>
-              <button className="btn-ghost" style={{ marginTop: 0 }} onClick={voteApi.cancelActiveVote}>
-                Annuler le vote en cours
-              </button>
-            </>
-          ) : (
-            <>
-              <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
-                Choisissez 2 à 5 films non vus et une heure de fin : les membres votent
-                depuis la vue d'ensemble. Égalité = Jimmy tranche. 🚪
-              </p>
-              <div className="admin-form-group">
-                <label>Films au vote ({voteItems.length}/5)</label>
-                <div className="vote-pick-list">
-                  {watchlist.filter(item => !watched.some(w => w.item_id === item.id)).map(item => (
-                    <label key={item.id} className={`vote-pick ${voteItems.includes(item.id) ? 'checked' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={voteItems.includes(item.id)}
-                        onChange={() => toggleVoteItem(item.id)}
-                      />
-                      <span>{item.title}{item.year ? ` (${item.year})` : ''}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="admin-form-group">
-                <label>Fin du vote</label>
-                <input
-                  type="datetime-local"
-                  className="admin-input"
-                  value={voteEndsAt}
-                  onChange={e => setVoteEndsAt(e.target.value)}
-                />
-              </div>
-              <button className="btn-add" onClick={launchVote} disabled={voteCreating}>
-                {voteCreating ? 'Lancement...' : 'Lancer le vote'}
-              </button>
-            </>
-          )}
-        </div>
+        {voteApi?.vote?.status === 'open' ? (
+          <div className="card anim-up-2">
+            <h2>🗳️ Vote de séance</h2>
+            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
+              Un vote est en cours dans cette room ({voteApi?.ballots?.length ?? 0} vote{(voteApi?.ballots?.length ?? 0) > 1 ? 's' : ''}).
+              Il se clôture automatiquement à l'échéance.
+            </p>
+            <button className="btn-ghost" style={{ marginTop: 0 }} onClick={voteApi.cancelActiveVote}>
+              Annuler le vote en cours
+            </button>
+          </div>
+        ) : (
+          <VoteComposer watchlist={watchlist} watched={watched} onCreate={voteApi.createVote} />
+        )}
 
         {isGlobalAdmin && (
           <div className="card anim-up-3">

@@ -342,6 +342,24 @@ a { color: inherit; }
   opacity: 0.85; flex-shrink: 0;
 }
 .nav-item .nav-icon svg { transition: transform 0.22s var(--ease); }
+
+/* Cloche de notification sur "Vote film" */
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(16deg); }
+  20% { transform: rotate(-14deg); }
+  30% { transform: rotate(10deg); }
+  40% { transform: rotate(-8deg); }
+  50% { transform: rotate(4deg); }
+  60% { transform: rotate(0deg); }
+}
+.nav-bell {
+  margin-left: auto; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--red); color: #fff; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(224, 82, 82, 0.5);
+}
+.nav-bell svg { animation: bellRing 1.8s ease-in-out infinite; transform-origin: 50% 15%; }
 .nav-item:hover .nav-icon svg { transform: scale(1.1); }
 .nav-item.active .nav-icon { opacity: 1; }
 .nav-item:hover { color: var(--text); background: var(--surface); transform: translateX(2px); }
@@ -1242,6 +1260,27 @@ a { color: inherit; }
   margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 14px;
 }
 .vote-result-row b { color: var(--gold); }
+
+/* Composeur de vote : emplacements d'affiches */
+.vote-composer-slots { display: flex; gap: 10px; flex-wrap: wrap; }
+.vote-slot {
+  position: relative; width: 68px; aspect-ratio: 2/3; border-radius: 8px;
+  overflow: visible; border: 1px solid var(--border); background: var(--bg3);
+}
+.vote-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
+.vote-slot-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.vote-slot-x {
+  position: absolute; top: -7px; right: -7px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--red); color: #fff; border: 2px solid var(--bg2);
+  font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.vote-slot-add {
+  border: 1.5px dashed var(--border-strong); background: var(--gold-soft);
+  color: var(--gold); font-size: 26px; font-weight: 300;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.25s var(--ease); cursor: pointer;
+}
+.vote-slot-add:hover { border-color: var(--gold); box-shadow: 0 0 16px var(--gold-glow); transform: translateY(-2px); }
 
 .vote-pick-list {
   display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto;

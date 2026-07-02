@@ -24,6 +24,7 @@ import StatsView from '../components/views/StatsView'
 import LeaderboardView from '../components/views/LeaderboardView'
 import AdminView from '../components/views/AdminView'
 import DiscussionsView from '../components/views/DiscussionsView'
+import VoteView from '../components/views/VoteView'
 
 // Modals & widgets
 import MovieModal from '../components/modals/MovieModal'
@@ -93,8 +94,8 @@ export default function App() {
   const social = useSocial({ authed, currentUser, onError: showToast })
   const voteApi = useVote({ authed, currentRoomId, currentUser, onError: showToast })
 
-  // Pastille de notifications : patchnotes + demandes d'amis + vote en attente
-  const totalUnread = social.unreadCount + (voteApi.voteOpen && !voteApi.myBallot ? 1 : 0)
+  // Cloche sur l'entrée "Vote film" de la sidebar : vote ouvert pas encore voté
+  const voteBadge = voteApi.voteOpen && !voteApi.myBallot
 
   // ── Cycle de vie ────────────────────────────────────────
   useEffect(() => { setMounted(true) }, [])
@@ -277,7 +278,8 @@ export default function App() {
           onToggleSidebar={() => setSidebarOpen(open => !open)}
           onLogout={logout}
           profile={social.profile}
-          unreadCount={totalUnread}
+          unreadCount={social.unreadCount}
+          voteBadge={voteBadge}
           onOpenProfile={() => setProfileOpen(true)}
         />
 
@@ -301,6 +303,7 @@ export default function App() {
             canManage={canManageCurrentRoom}
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
+            voteBadge={voteBadge}
           />
 
           <main className="content">
@@ -319,6 +322,17 @@ export default function App() {
                 onOpenDetails={openDetails}
                 avatarMap={social.avatarMap}
                 voteApi={voteApi}
+              />
+            )}
+            {view === VIEWS.VOTE && (
+              <VoteView
+                currentRoom={currentRoom}
+                currentUser={currentUser}
+                watchlist={watchlist}
+                watched={watched}
+                avatarMap={social.avatarMap}
+                voteApi={voteApi}
+                canManage={canManageCurrentRoom}
               />
             )}
             {view === VIEWS.LISTE && (
@@ -447,7 +461,7 @@ export default function App() {
           voteNotice={voteApi.voteOpen && voteApi.vote ? {
             myBallot: Boolean(voteApi.myBallot),
             endsAt: voteApi.vote.ends_at,
-            onGo: () => { setProfileOpen(false); setView(VIEWS.OVERVIEW) },
+            onGo: () => { setProfileOpen(false); setView(VIEWS.VOTE) },
           } : null}
           onClose={() => setProfileOpen(false)}
           watchlist={watchlist}

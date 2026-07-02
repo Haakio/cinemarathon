@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import VoteCard from '../cards/VoteCard'
 import HeroCard from '../cards/HeroCard'
 import ProgressCard from '../cards/ProgressCard'
 import GoalCard from '../cards/GoalCard'
@@ -39,28 +38,10 @@ export default function DashboardView({
     [watchlist, watched, availability]
   )
 
-  // Le vote s'affiche s'il est ouvert, ou clos tant que le film gagnant
-  // n'a pas encore été vu (ensuite la carte disparaît d'elle-même).
-  const showVote = voteApi?.vote && (
-    voteApi.vote.status === 'open' ||
-    (voteApi.vote.status === 'closed' && voteApi.vote.winner_item_id && !seenSetForVote.has(voteApi.vote.winner_item_id))
-  )
-
   return (
     <>
       <div className="dash-grid">
         <div className="dash-main">
-          {showVote && (
-            <VoteCard
-              vote={voteApi.vote}
-              ballots={voteApi.ballots}
-              myBallot={voteApi.myBallot}
-              watchlist={watchlist}
-              currentUser={currentUser}
-              avatarMap={avatarMap}
-              onBallot={voteApi.castBallot}
-            />
-          )}
           <HeroCard room={currentRoom} progress={progress} memberCount={members.length} watchlist={watchlist} />
           <ProgressCard progress={progress} />
           <NextUpCard item={nextItem} onStart={onWatch} onOpenDetails={onOpenDetails} />

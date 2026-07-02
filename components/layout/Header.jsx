@@ -11,7 +11,7 @@ import { TYPE_META } from '../../utils/constants'
 export default function Header({
   currentUser, watchlist, watched,
   onOpenItem, onToggleSidebar, onLogout,
-  profile, unreadCount, onOpenProfile,
+  profile, unreadCount, onOpenProfile, voteBadge = false,
 }) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
@@ -38,7 +38,10 @@ export default function Header({
 
   return (
     <header className="topbar">
-      <button className="topbar-burger" onClick={onToggleSidebar} aria-label="Menu">☰</button>
+      <button className="topbar-burger" onClick={onToggleSidebar} aria-label="Menu" style={{ position: 'relative' }}>
+        ☰
+        {voteBadge && <span className="notif-dot header-dot" style={{ fontSize: 0, minWidth: 10, height: 10, padding: 0 }} />}
+      </button>
       <div className="topbar-logo">CINÉMARATHON</div>
 
       <div className="global-search" ref={wrapRef}>

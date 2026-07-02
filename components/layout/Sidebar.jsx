@@ -12,6 +12,7 @@ const MAIN_ITEMS = [
   { id: VIEWS.REGARDER, icon: 'play', label: 'Regarder' },
   { id: VIEWS.VU, icon: 'check', label: 'Déjà vu' },
   { id: VIEWS.CALENDRIER, icon: 'calendar', label: 'Calendrier' },
+  { id: VIEWS.VOTE, icon: 'vote', label: 'Vote film' },
 ]
 
 const INSIGHT_ITEMS = [
@@ -20,7 +21,7 @@ const INSIGHT_ITEMS = [
   { id: VIEWS.CLASSEMENT, icon: 'crown', label: 'Classement' },
 ]
 
-export default function Sidebar({ view, onNavigate, currentRoom, memberCount, canManage, open, onClose }) {
+export default function Sidebar({ view, onNavigate, currentRoom, memberCount, canManage, open, onClose, voteBadge = false }) {
   const navigate = id => { onNavigate(id); onClose?.() }
 
   const renderItem = item => (
@@ -31,6 +32,11 @@ export default function Sidebar({ view, onNavigate, currentRoom, memberCount, ca
     >
       <span className="nav-icon"><Icon name={item.icon} /></span>
       {item.label}
+      {item.id === VIEWS.VOTE && voteBadge && (
+        <span className="nav-bell" title="Un vote vous attend !">
+          <Icon name="bell" size={12} strokeWidth={2.2} />
+        </span>
+      )}
     </button>
   )
 
