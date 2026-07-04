@@ -2,14 +2,20 @@ import { useMemo, useState } from 'react'
 import MovieCard from '../cards/MovieCard'
 import { LIST_FILTERS } from '../../utils/constants'
 import { getSeenItemIds } from '../../utils/stats'
+import { mcuRank } from '../../lib/mcuChrono'
 
 /**
  * Liste du marathon : grille de cartes premium avec filtres.
  * Filtrage 100 % client sur les données déjà chargées.
  */
-/** Ordre de la liste : "chronologique" dans Marvel (l'ordre de l'histoire), sinon "marathon". */
+/**
+ * Ordre de la liste : "chronologique" dans Marvel (l'ordre de l'histoire),
+ * sinon "marathon". Marvel gagne aussi "MCU (chrono)" : uniquement les
+ * titres du MCU, dans l'ordre de la chronologie officielle.
+ */
 const sortOptions = isMarvel => [
   ['marathon', isMarvel ? 'Ordre chronologique' : 'Ordre marathon'],
+  ...(isMarvel ? [['mcu', 'MCU (chrono)']] : []),
   ['release-asc', 'Sortie ↑'],
   ['release-desc', 'Sortie ↓'],
 ]
@@ -30,6 +36,16 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
     if (filter === 'anime') list = list.filter(i => i.type === 'anime')
     if (filter === 'seen') list = list.filter(i => seenSet.has(i.id))
     if (filter === 'unseen') list = list.filter(i => !seenSet.has(i.id))
+
+    // Mode MCU : uniquement les titres du MCU, dans l'ordre chronologique
+    // officiel (X-Men, Blade et autres Marvel hors MCU sont masqués).
+    if (sort === 'mcu') {
+      return list
+        .map(item => ({ item, rank: mcuRank(item.title) }))
+        .filter(entry => entry.rank >= 0)
+        .sort((a, b) => a.rank - b.rank || a.item.order - b.item.order)
+        .map(entry => entry.item)
+    }
 
     // Tri par date de sortie : date TMDB complète si disponible (départage
     // les titres d'une même année), sinon milieu d'année approximatif.
