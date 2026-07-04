@@ -20,6 +20,8 @@ export default async function handler(req, res) {
         emoji: row.avatar_emoji || '',
         hue: row.avatar_hue ?? null,
         url: row.avatar_url || '',
+        tagLabel: row.tag_label || '',
+        tagColor: row.tag_color || '',
       })),
     })
   } catch (err) {

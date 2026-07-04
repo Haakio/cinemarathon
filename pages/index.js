@@ -602,6 +602,8 @@ export default function App() {
         <ProfileModal
           social={social}
           currentUser={currentUser}
+          isGlobalAdmin={isAdmin}
+          showToast={showToast}
           onAcceptRoomInvite={acceptRoomInvite}
           onDeclineRoomInvite={declineRoomInvite}
           voteNotice={voteApi.voteOpen && voteApi.vote ? {

@@ -88,6 +88,16 @@ export const JIMMY_CONFIG = {
   greenMin: 80,
 }
 
+/** Couleurs de tags disponibles (validées aussi côté serveur). */
+export const TAG_COLORS = {
+  red: '#E05252',
+  gold: '#C9A84C',
+  green: '#52C47A',
+  blue: '#5B8DEF',
+  purple: '#A06BFF',
+  pink: '#E06BC4',
+}
+
 /** Emojis d'avatar proposés (validés aussi côté serveur). */
 export const AVATAR_EMOJIS = ['🎬', '🍿', '📺', '🎭', '🎥', '⭐', '🦸', '🧙', '👽', '🤖', '🐉', '🕷️', '🃏', '🔥', '💀', '👑']
 

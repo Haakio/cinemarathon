@@ -24,12 +24,14 @@ export default async function handler(req, res) {
       // le répéter sur chacun de ses posts).
       const avatars = {}
       const posts = rows.map(row => {
-        const { avatar_emoji, avatar_hue, avatar_url, ...post } = row
+        const { avatar_emoji, avatar_hue, avatar_url, tag_label, tag_color, ...post } = row
         if (!(post.user_id in avatars)) {
           avatars[post.user_id] = {
             emoji: avatar_emoji || '',
             hue: avatar_hue ?? null,
             url: avatar_url || '',
+            tagLabel: tag_label || '',
+            tagColor: tag_color || '',
           }
         }
         return post

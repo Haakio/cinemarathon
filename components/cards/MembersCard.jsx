@@ -1,4 +1,5 @@
 import Avatar from '../widgets/Avatar'
+import UserTag from '../widgets/UserTag'
 
 /**
  * Membres de la room : avatar (personnalisé si défini, sinon généré),
@@ -36,6 +37,7 @@ export default function MembersCard({ members, avatarMap = {} }) {
             <div className="member-body">
               <div className="member-name">
                 {member.pseudo}
+                <UserTag entry={custom} />
                 {member.isMe && <span className="me-tag">Toi</span>}
               </div>
               <div className="member-bar">

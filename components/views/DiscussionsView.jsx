@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Avatar from '../widgets/Avatar'
+import UserTag from '../widgets/UserTag'
 import { api } from '../../utils/api'
 import { formatRelative } from '../../utils/format'
 import { TYPE_META } from '../../utils/constants'
@@ -157,7 +158,7 @@ export default function DiscussionsView({ currentRoom, currentRoomId, currentUse
                 <div className="post-head">
                   <Avatar pseudo={post.pseudo} emoji={avatars[post.user_id]?.emoji || ''} hue={avatars[post.user_id]?.hue ?? null} url={avatars[post.user_id]?.url || ''} size={36} />
                   <div className="post-head-info">
-                    <b>{post.pseudo}</b>
+                    <b>{post.pseudo}<UserTag entry={avatars[post.user_id]} /></b>
                     <small>{formatRelative(post.created_at)}</small>
                   </div>
                   {item && (

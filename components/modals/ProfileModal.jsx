@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Modal from './Modal'
 import Avatar from '../widgets/Avatar'
-import { AVATAR_EMOJIS, AVATAR_HUES } from '../../utils/constants'
+import UserTag from '../widgets/UserTag'
+import { api } from '../../utils/api'
+import { AVATAR_EMOJIS, AVATAR_HUES, TAG_COLORS } from '../../utils/constants'
 import { buildBadgeContext, computeBadges } from '../../lib/badges'
 import { formatDate, formatRelative, pseudoHue } from '../../utils/format'
 import { patchnoteHistory } from '../../lib/patchnotes'
@@ -48,7 +50,7 @@ function downscaleImage(file, size = 128) {
  */
 export default function ProfileModal({
   social, currentUser, onClose, initialTab = 'profil', voteNotice = null,
-  onAcceptRoomInvite, onDeclineRoomInvite,
+  onAcceptRoomInvite, onDeclineRoomInvite, isGlobalAdmin = false, showToast,
   watchlist, watched, availability, chatMessages,
   chatEnabled, onChatPreference, onLogout,
 }) {
@@ -68,6 +70,30 @@ export default function ProfileModal({
     setDraftHue(profile?.avatarHue ?? null)
     setDraftUrl(profile?.avatarUrl || '')
   }, [profile])
+
+  // Outil tags (admin du site uniquement)
+  const [tagPseudo, setTagPseudo] = useState('')
+  const [tagLabel, setTagLabel] = useState('')
+  const [tagColor, setTagColor] = useState('red')
+  const [tagSaving, setTagSaving] = useState(false)
+
+  async function saveTag(remove = false) {
+    if (!tagPseudo.trim()) { showToast?.('Entrez un pseudo.'); return }
+    setTagSaving(true)
+    try {
+      await api('POST', '/auth/tag', {
+        pseudo: tagPseudo.trim(),
+        label: remove ? '' : tagLabel,
+        color: tagColor,
+      })
+      showToast?.(remove ? 'Tag retiré.' : 'Tag attribué ✓')
+      social.reload() // rafraîchit l'avatarMap → le tag apparaît partout
+      if (remove) { setTagPseudo(''); setTagLabel('') }
+    } catch (e) {
+      showToast?.(e.message)
+    }
+    setTagSaving(false)
+  }
 
   // Recherche d'amis
   const [friendQuery, setFriendQuery] = useState('')
@@ -166,7 +192,10 @@ export default function ProfileModal({
         <div className="profile-head">
           <Avatar pseudo={currentUser?.pseudo} emoji={draftEmoji} hue={draftHue} url={draftUrl.trim()} size={64} />
           <div>
-            <h2 className="display" style={{ fontSize: '24px' }}>{currentUser?.pseudo}</h2>
+            <h2 className="display" style={{ fontSize: '24px' }}>
+              {currentUser?.pseudo}
+              <UserTag entry={social.avatarMap?.[currentUser?.id]} />
+            </h2>
             <div className="profile-sub">
               {profile?.createdAt ? `Membre depuis le ${formatDate(profile.createdAt)} · ` : ''}
               {mySeen} titre{mySeen > 1 ? 's' : ''} vu{mySeen > 1 ? 's' : ''}
@@ -428,6 +457,51 @@ export default function ProfileModal({
               </span>
               <input type="checkbox" checked={chatEnabled} onChange={e => onChatPreference(e.target.checked)} />
             </label>
+
+            {isGlobalAdmin && (
+              <>
+                <h4 className="profile-section-title" style={{ marginTop: '20px' }}>Tags des membres (admin)</h4>
+                <div className="admin-form-group">
+                  <label>Pseudo</label>
+                  <input className="admin-input" value={tagPseudo} onChange={e => setTagPseudo(e.target.value)}
+                    placeholder="Ex: Haakio" />
+                </div>
+                <div className="admin-form-group">
+                  <label>Tag (max 20 caractères)</label>
+                  <input className="admin-input" value={tagLabel} onChange={e => setTagLabel(e.target.value)}
+                    placeholder="Ex: Vibe Coder" maxLength={20} />
+                </div>
+                <div className="admin-form-group">
+                  <label>Couleur</label>
+                  <div className="hue-picker">
+                    {Object.entries(TAG_COLORS).map(([name, hex]) => (
+                      <button
+                        key={name}
+                        className={`hue-choice ${tagColor === name ? 'selected' : ''}`}
+                        style={{ background: hex }}
+                        onClick={() => setTagColor(name)}
+                        title={name}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {tagLabel.trim() && (
+                  <div style={{ marginBottom: '12px', fontSize: '13px' }}>
+                    Aperçu : <b>{tagPseudo.trim() || 'Pseudo'}</b>
+                    <UserTag entry={{ tagLabel: tagLabel.trim(), tagColor }} />
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-add" style={{ flex: 1 }} onClick={() => saveTag(false)} disabled={tagSaving || !tagLabel.trim()}>
+                    {tagSaving ? '...' : 'Attribuer le tag'}
+                  </button>
+                  <button className="btn-ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => saveTag(true)} disabled={tagSaving}>
+                    Retirer
+                  </button>
+                </div>
+              </>
+            )}
+
             <button className="btn-ghost" style={{ marginTop: '14px' }} onClick={onLogout}>
               Se déconnecter
             </button>
