@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { getUser, createUser } from '../../../lib/db'
+import { addUserToPublicRooms, getUser, createUser } from '../../../lib/db'
 import { signToken } from '../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     const hashed = await bcrypt.hash(password, 10)
     const id = uid()
     await createUser(id, pseudo.trim(), hashed)
+    // Membre automatique de toutes les rooms publiques (non bloquant)
+    try { await addUserToPublicRooms(id) } catch { }
     const token = signToken({ id, pseudo: pseudo.trim() })
     return res.status(201).json({ token, user: { id, pseudo: pseudo.trim() } })
   } catch (err) {

@@ -36,6 +36,7 @@ import ChatConsentModal from '../components/modals/ChatConsentModal'
 import ChatWidget from '../components/widgets/ChatWidget'
 import FeedbackWidget from '../components/widgets/FeedbackWidget'
 import Toast from '../components/widgets/Toast'
+import PopupStack from '../components/widgets/PopupStack'
 
 // Utils
 import { api, clearSession, getStoredGoal, getStoredUser, getToken, saveSession, saveStoredGoal } from '../utils/api'
@@ -84,10 +85,21 @@ export default function App() {
     setTimeout(() => setToastVisible(false), 2200)
   }, [])
 
+  // Popups de notification sociale (bas-droite, auto-fermeture 7s)
+  const [popups, setPopups] = useState([])
+  const pushPopup = useCallback(popup => {
+    const id = Math.random().toString(36).slice(2)
+    setPopups(prev => [...prev.slice(-3), { id, ...popup }])
+    setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 7000)
+  }, [])
+  const dismissPopup = useCallback(id => {
+    setPopups(prev => prev.filter(p => p.id !== id))
+  }, [])
+
   // ── Données marathon (source de vérité unique) ──────────
   const marathon = useMarathon({
     authed, currentUser, view, pageVisible,
-    membersWanted: roomPanelOpen || view === VIEWS.ADMIN,
+    membersWanted: roomPanelOpen || view === VIEWS.ADMIN || view === VIEWS.OVERVIEW,
   })
   const {
     rooms, setRooms, currentRoomId, selectRoom, currentRoom,
@@ -97,7 +109,7 @@ export default function App() {
   } = marathon
 
   const chat = useChat({ authed, currentUser, currentRoomId, pageVisible, onError: showToast })
-  const social = useSocial({ authed, currentUser, onError: showToast })
+  const social = useSocial({ authed, currentUser, pageVisible, onNotify: pushPopup, onError: showToast })
   const voteApi = useVote({ authed, currentRoomId, currentUser, view, pageVisible, onError: showToast })
 
   // Cloche sur l'entrée "Vote film" de la sidebar : vote ouvert pas encore voté
@@ -580,6 +592,11 @@ export default function App() {
       {/* Widgets flottants */}
       <ChatWidget chat={chat} currentRoom={currentRoom} currentUser={currentUser} avatarMap={social.avatarMap} />
       <FeedbackWidget currentRoom={currentRoom} showToast={showToast} />
+      <PopupStack
+        popups={popups}
+        onOpen={popup => { dismissPopup(popup.id); setProfileOpen(true) }}
+        onDismiss={dismissPopup}
+      />
       <Toast message={toast} visible={toastVisible} />
     </>
   )

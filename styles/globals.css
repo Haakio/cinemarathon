@@ -1181,6 +1181,29 @@ a { color: inherit; }
 .feedback-foot button { background: var(--gold); color: #000; border: none; border-radius: 999px; padding: 9px 20px; font-size: 12px; font-weight: 800; }
 .feedback-foot button:disabled { opacity: 0.5; }
 
+/* Popups de notification sociale (bas-droite, au-dessus de la bulle chat) */
+.popup-stack {
+  position: fixed; right: 22px; bottom: 92px; z-index: 450;
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+}
+.popup-notif {
+  display: flex; align-items: center; gap: 12px; width: 320px; max-width: calc(100vw - 44px);
+  padding: 13px 14px; cursor: pointer;
+  background: var(--bg2); border: 1px solid var(--border-strong); border-radius: 14px;
+  box-shadow: var(--shadow-pop); animation: fadeUp 0.35s var(--ease) both;
+  transition: transform 0.2s var(--ease), border-color 0.2s;
+}
+.popup-notif:hover { transform: translateY(-2px); border-color: var(--gold); }
+.popup-icon { font-size: 22px; flex-shrink: 0; }
+.popup-body { flex: 1; min-width: 0; }
+.popup-body b { display: block; font-size: 13px; color: var(--gold); }
+.popup-body span { font-size: 13px; color: var(--text); line-height: 1.35; }
+.popup-close {
+  background: none; border: none; color: var(--text3); font-size: 17px;
+  flex-shrink: 0; padding: 2px 4px;
+}
+.popup-close:hover { color: var(--text); }
+
 .toast {
   position: fixed; bottom: 28px; left: 50%; transform: translate(-50%, 80px);
   background: var(--bg2); border: 1px solid var(--border-strong); color: var(--text);

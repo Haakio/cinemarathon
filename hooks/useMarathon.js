@@ -114,10 +114,10 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
     ? isAdmin
     : (currentRoom.can_manage || canDeleteCurrentRoom || isAdmin)
 
-  // Membres de la room (uniquement quand une vue le demande, comme avant)
+  // Membres de la room : chargés quand une vue en a besoin (vue d'ensemble,
+  // panneau room, admin) — accessible à tous les membres, l'API vérifie l'accès.
   useEffect(() => {
-    if (!pageVisible || !membersWanted || !canDeleteCurrentRoom) {
-      setRoomMembers([])
+    if (!pageVisible || !membersWanted) {
       return
     }
     let cancelled = false
@@ -125,7 +125,7 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
       .then(members => { if (!cancelled) setRoomMembers(members) })
       .catch(() => { if (!cancelled) setRoomMembers([]) })
     return () => { cancelled = true }
-  }, [membersWanted, pageVisible, currentRoomId, canDeleteCurrentRoom])
+  }, [membersWanted, pageVisible, currentRoomId])
 
   const selectRoom = useCallback(roomId => {
     setCurrentRoomId(roomId)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../utils/api'
 import { patchnoteHistory } from '../lib/patchnotes'
 
@@ -15,7 +15,7 @@ function getNotifSeenAt(userId) {
   return typeof window !== 'undefined' ? localStorage.getItem(`cm_notif_seen_${userId}`) : null
 }
 
-export function useSocial({ authed, currentUser, onError }) {
+export function useSocial({ authed, currentUser, pageVisible = true, onNotify, onError }) {
   const [profile, setProfile] = useState(null)
   const [friends, setFriends] = useState([])
   const [incoming, setIncoming] = useState([])
@@ -23,6 +23,8 @@ export function useSocial({ authed, currentUser, onError }) {
   const [avatarMap, setAvatarMap] = useState({})
   const [roomInvites, setRoomInvites] = useState([])
   const [notifSeenAt, setNotifSeenAt] = useState(null)
+  // Instantané précédent pour détecter les nouveautés (popups)
+  const prevSnapshotRef = useRef(null)
 
   const loadSocial = useCallback(async () => {
     if (!authed) return
@@ -32,11 +34,48 @@ export function useSocial({ authed, currentUser, onError }) {
         api('GET', '/auth/friends'),
         api('GET', '/auth/avatars'),
       ])
+      const nextFriends = friendData.friends || []
+      const nextIncoming = friendData.incoming || []
+      const nextOutgoing = friendData.outgoing || []
+      const nextInvites = friendData.roomInvites || []
+
+      // Détection des événements depuis le dernier chargement → popups
+      const prev = prevSnapshotRef.current
+      if (prev && onNotify) {
+        nextIncoming
+          .filter(request => !prev.incomingIds.has(request.userId))
+          .forEach(request => onNotify({
+            icon: '👥',
+            title: "Demande d'ami",
+            text: `${request.pseudo} veut devenir votre ami`,
+          }))
+        nextInvites
+          .filter(invite => !prev.inviteIds.has(invite.roomId))
+          .forEach(invite => onNotify({
+            icon: '🎬',
+            title: 'Invitation',
+            text: `${invite.fromPseudo} vous invite dans ${invite.roomName}`,
+          }))
+        nextFriends
+          .filter(friend => prev.outgoingIds.has(friend.userId) && !prev.friendIds.has(friend.userId))
+          .forEach(friend => onNotify({
+            icon: '🎉',
+            title: 'Nouvel ami',
+            text: `${friend.pseudo} a accepté votre demande d'ami`,
+          }))
+      }
+      prevSnapshotRef.current = {
+        incomingIds: new Set(nextIncoming.map(r => r.userId)),
+        inviteIds: new Set(nextInvites.map(i => i.roomId)),
+        outgoingIds: new Set(nextOutgoing.map(r => r.userId)),
+        friendIds: new Set(nextFriends.map(f => f.userId)),
+      }
+
       setProfile(me)
-      setFriends(friendData.friends || [])
-      setIncoming(friendData.incoming || [])
-      setOutgoing(friendData.outgoing || [])
-      setRoomInvites(friendData.roomInvites || [])
+      setFriends(nextFriends)
+      setIncoming(nextIncoming)
+      setOutgoing(nextOutgoing)
+      setRoomInvites(nextInvites)
       // Map de lookup : par userId ET par pseudo (les données du marathon
       // ne portent parfois que le pseudo)
       const map = {}
@@ -46,10 +85,20 @@ export function useSocial({ authed, currentUser, onError }) {
       })
       setAvatarMap(map)
     } catch { }
-  }, [authed])
+  }, [authed]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Chargement unique par session
-  useEffect(() => { loadSocial() }, [loadSocial])
+  // Chargement au login + resynchronisation au retour d'onglet
+  useEffect(() => {
+    if (authed && pageVisible) loadSocial()
+  }, [authed, pageVisible, loadSocial])
+
+  // Poll social léger (60s, onglet visible) : les demandes d'amis,
+  // acceptations et invitations arrivent en popup sans refresh.
+  useEffect(() => {
+    if (!authed || !pageVisible) return
+    const timer = setInterval(loadSocial, 60000)
+    return () => clearInterval(timer)
+  }, [authed, pageVisible, loadSocial])
 
   useEffect(() => {
     if (currentUser?.id) setNotifSeenAt(getNotifSeenAt(currentUser.id))

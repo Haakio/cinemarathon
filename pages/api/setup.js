@@ -230,6 +230,15 @@ export default async function handler(req, res) {
         AND rooms.join_code_hash IS NULL
       ON CONFLICT (room_id, user_id) DO NOTHING
     `
+    // Tous les comptes existants deviennent membres des rooms publiques
+    await sql`
+      INSERT INTO room_members (room_id, user_id, role, joined_at)
+      SELECT rooms.id, users.id, 'member', NOW()
+      FROM rooms
+      CROSS JOIN users
+      WHERE rooms.is_private = false OR rooms.id = 'marvel'
+      ON CONFLICT (room_id, user_id) DO NOTHING
+    `
 
     return res.status(200).json({ ok: true, message: 'Tables creees avec succes !' })
   } catch (err) {
