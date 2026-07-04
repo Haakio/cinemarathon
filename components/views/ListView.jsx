@@ -37,15 +37,15 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
     if (filter === 'seen') list = list.filter(i => seenSet.has(i.id))
     if (filter === 'unseen') list = list.filter(i => !seenSet.has(i.id))
 
-    // Mode MCU : la liste du marathon est DÉJÀ en ordre chronologique
-    // (saisons intercalées comprises) — on se contente de MASQUER les
-    // Marvel hors MCU (X-Men, Blade, Venom, Ghost Rider...), en gardant
-    // l'ordre de la liste. Le référentiel mcuChrono ne sert qu'à
-    // l'inclusion, pas au placement.
+    // Mode MCU : UNIQUEMENT les 35 films de la liste officielle
+    // (lib/mcuChrono.js), dans son ordre exact. Séries et Marvel hors MCU
+    // sont masqués.
     if (sort === 'mcu') {
       return list
-        .filter(item => mcuRank(item.title) >= 0)
-        .sort((a, b) => a.order - b.order)
+        .map(item => ({ item, rank: mcuRank(item.title) }))
+        .filter(entry => entry.rank >= 0)
+        .sort((a, b) => a.rank - b.rank || a.item.order - b.item.order)
+        .map(entry => entry.item)
     }
 
     // Tri par date de sortie : date TMDB complète si disponible (départage
