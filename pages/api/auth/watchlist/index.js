@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { roomId = 'marvel', title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast } = req.body
+    const { roomId = 'marvel', title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast, releaseDate } = req.body
     if (!title || !type) return res.status(400).json({ error: 'Titre et type requis' })
     if (!isValidWatchUrl(watchUrl)) return res.status(400).json({ error: 'Lien de visionnage invalide' })
     try {
@@ -47,6 +47,7 @@ export default async function handler(req, res) {
         tmdbId: tmdbId ? String(tmdbId) : '',
         backdrop: backdrop || '',
         castJson: Array.isArray(cast) ? JSON.stringify(cast.slice(0, 10)) : '[]',
+        releaseDate: releaseDate || '',
       }
       await insertWatchlistItem(item)
       return res.status(201).json(item)

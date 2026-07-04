@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
-    const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast } = req.body
+    const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast, releaseDate } = req.body
 
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
@@ -51,6 +51,7 @@ export default async function handler(req, res) {
           tmdbId: tmdbId !== undefined ? String(tmdbId || '') : undefined,
           backdrop: backdrop || '',
           castJson: Array.isArray(cast) ? JSON.stringify(cast.slice(0, 10)) : '[]',
+          releaseDate: releaseDate || '',
         })
 
         return res.status(200).json({ ok: true })

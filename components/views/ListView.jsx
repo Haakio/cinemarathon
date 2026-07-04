@@ -7,10 +7,11 @@ import { getSeenItemIds } from '../../utils/stats'
  * Liste du marathon : grille de cartes premium avec filtres.
  * Filtrage 100 % client sur les données déjà chargées.
  */
-const SORTS = [
-  ['marathon', 'Ordre marathon'],
-  ['year-asc', 'Année ↑'],
-  ['year-desc', 'Année ↓'],
+/** Ordre de la liste : "chronologique" dans Marvel (l'ordre de l'histoire), sinon "marathon". */
+const sortOptions = isMarvel => [
+  ['marathon', isMarvel ? 'Ordre chronologique' : 'Ordre marathon'],
+  ['release-asc', 'Sortie ↑'],
+  ['release-desc', 'Sortie ↓'],
 ]
 
 export default function ListView({ currentRoom, watchlist, watched, seenSource, currentUser, onWatch, onOpenDetails }) {
@@ -30,10 +31,20 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
     if (filter === 'seen') list = list.filter(i => seenSet.has(i.id))
     if (filter === 'unseen') list = list.filter(i => !seenSet.has(i.id))
 
-    // Tri par année de sortie (les titres sans année passent à la fin)
+    // Tri par date de sortie : date TMDB complète si disponible (départage
+    // les titres d'une même année), sinon milieu d'année approximatif.
     if (sort !== 'marathon') {
-      const yearOf = item => parseInt(item.year, 10) || (sort === 'year-asc' ? 9999 : -9999)
-      list.sort((a, b) => sort === 'year-asc' ? yearOf(a) - yearOf(b) : yearOf(b) - yearOf(a))
+      const asc = sort === 'release-asc'
+      const dateOf = item => {
+        if (item.release_date) {
+          const time = Date.parse(item.release_date)
+          if (!Number.isNaN(time)) return time
+        }
+        const year = parseInt(item.year, 10)
+        if (year) return Date.parse(`${year}-06-30`)
+        return asc ? Infinity : -Infinity // sans date → fin de liste
+      }
+      list.sort((a, b) => asc ? dateOf(a) - dateOf(b) : dateOf(b) - dateOf(a))
     }
     return list
   }, [watchlist, filter, sort, seenSet])
@@ -63,7 +74,7 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
           </button>
         ))}
         <span className="filters-divider" />
-        {SORTS.map(([value, label]) => (
+        {sortOptions(currentRoom.id === 'marvel').map(([value, label]) => (
           <button key={value} className={`filter-btn ${sort === value ? 'active' : ''}`} onClick={() => setSort(value)}>
             {label}
           </button>

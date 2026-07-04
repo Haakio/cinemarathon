@@ -5,7 +5,7 @@ import { TYPE_META } from '../../utils/constants'
 
 const EMPTY_FORM = {
   title: '', type: 'film', poster: '', year: '', platform: '', watchUrl: '',
-  synopsis: '', runtime: 0, genres: '', tmdbId: '', backdrop: '', cast: [],
+  synopsis: '', runtime: 0, genres: '', tmdbId: '', backdrop: '', cast: [], releaseDate: '',
 }
 
 /**
@@ -92,6 +92,7 @@ export default function AdminView({
         tmdbId: String(d.tmdbId),
         backdrop: d.backdrop,
         cast: d.cast,
+        releaseDate: d.releaseDate || '',
       }))
       showToast('Fiche TMDB importée ✓')
     } catch (e) {
@@ -125,6 +126,7 @@ export default function AdminView({
       tmdbId: item.tmdb_id || '',
       backdrop: item.backdrop || '',
       cast: (() => { try { return JSON.parse(item.cast_json || '[]') } catch { return [] } })(),
+      releaseDate: item.release_date || '',
     })
     setMsg('')
   }

@@ -214,6 +214,7 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS tmdb_id TEXT DEFAULT ''`
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS backdrop TEXT DEFAULT ''`
     await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS cast_json TEXT DEFAULT '[]'`
+    await sql`ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS release_date TEXT DEFAULT ''`
     await sql`UPDATE watchlist SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE watched SET room_id = 'marvel' WHERE room_id IS NULL`
     await sql`UPDATE rooms SET is_private = false WHERE id = 'marvel'`
