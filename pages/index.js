@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 // Hooks (logique data, comportement identique à l'ancienne version)
 import { usePageVisible } from '../hooks/usePageVisible'
@@ -169,15 +169,42 @@ export default function App() {
     reset()
   }
 
+  // ── Reprise du carrousel "Regarder" ─────────────────────
+  // Le film courant est mémorisé par room (localStorage) : après un
+  // refresh, on reprend là où on s'était arrêté, pas au premier de la liste.
+  const setWatchIdxPersist = useCallback(idx => {
+    setWatchIdx(idx)
+    const item = watchlist[idx]
+    if (item) localStorage.setItem(`cm_watch_item_${currentRoomId}`, item.id)
+  }, [watchlist, currentRoomId])
+
+  const restoredRoomRef = useRef(null)
+  useEffect(() => {
+    if (!watchlist.length) return
+    if (restoredRoomRef.current === currentRoomId) return
+    const savedId = localStorage.getItem(`cm_watch_item_${currentRoomId}`)
+    if (!savedId) {
+      restoredRoomRef.current = currentRoomId
+      return
+    }
+    const idx = watchlist.findIndex(w => w.id === savedId)
+    // Si le film n'est pas dans la liste, c'est peut-être encore celle de
+    // l'ancienne room : on retentera au prochain chargement.
+    if (idx >= 0) {
+      setWatchIdx(idx)
+      restoredRoomRef.current = currentRoomId
+    }
+  }, [watchlist, currentRoomId])
+
   const goWatch = useCallback(id => {
     const idx = watchlist.findIndex(w => w.id === id)
     if (idx >= 0) {
-      setWatchIdx(idx)
+      setWatchIdxPersist(idx)
       setView(VIEWS.REGARDER)
       setSelectedItem(null)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [watchlist])
+  }, [watchlist, setWatchIdxPersist])
 
   const openDetails = useCallback(item => setSelectedItem(item), [])
 
@@ -438,7 +465,7 @@ export default function App() {
                 seenSource={seenSource}
                 currentUser={currentUser}
                 watchIdx={watchIdx}
-                setWatchIdx={setWatchIdx}
+                setWatchIdx={setWatchIdxPersist}
                 currentRoomId={currentRoomId}
                 loadData={loadData}
                 showToast={showToast}

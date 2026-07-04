@@ -17,7 +17,9 @@ export default function MembersCard({ members, avatarMap = {} }) {
         <p style={{ color: 'var(--text2)', fontSize: '13px' }}>
           Les membres apparaissent ici dès qu'ils participent (note, dispo, message).
         </p>
-      ) : members.map(member => {
+      ) : (
+      <div className="members-list">
+      {members.map(member => {
         const custom = avatarOf(member)
         return (
           <div className="member-row" key={member.pseudo}>
@@ -44,6 +46,8 @@ export default function MembersCard({ members, avatarMap = {} }) {
           </div>
         )
       })}
+      </div>
+      )}
     </section>
   )
 }

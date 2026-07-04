@@ -43,8 +43,9 @@ export default function DashboardView({
     () => buildMembers({ watchlist, watched, availability, chatMessages, roomMembers, currentUser }),
     [watchlist, watched, availability, chatMessages, roomMembers, currentUser]
   )
+  // 30 entrées gardées : ~6 visibles, le reste accessible au scroll
   const activity = useMemo(
-    () => buildActivity({ watchlist, watched, availability }),
+    () => buildActivity({ watchlist, watched, availability }, 30),
     [watchlist, watched, availability]
   )
 

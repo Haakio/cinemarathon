@@ -609,8 +609,12 @@ a { color: inherit; }
 }
 .btn-play:hover { transform: translateY(-1px); box-shadow: 0 8px 24px var(--gold-glow); }
 
-/* Activité */
-.activity-list { display: flex; flex-direction: column; position: relative; }
+/* Activité — plafonnée à ~6 entrées visibles, scroll interne pour l'historique */
+.activity-list {
+  display: flex; flex-direction: column; position: relative;
+  max-height: 315px; overflow-y: auto; padding-right: 6px;
+  scrollbar-width: thin;
+}
 .activity-item { display: flex; gap: 12px; padding: 9px 0; position: relative; }
 .activity-item:not(:last-child)::before {
   content: ''; position: absolute; left: 14px; top: 38px; bottom: -6px;
@@ -626,7 +630,11 @@ a { color: inherit; }
 .activity-text b { color: var(--gold); font-weight: 600; }
 .activity-time { font-size: 11px; color: var(--text3); margin-top: 1px; }
 
-/* Membres */
+/* Membres — plafonné à ~5 lignes visibles, scroll interne au-delà */
+.members-list {
+  max-height: 280px; overflow-y: auto; padding-right: 6px;
+  scrollbar-width: thin;
+}
 .member-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
 .member-avatar-wrap { position: relative; flex-shrink: 0; }
 .member-avatar {
