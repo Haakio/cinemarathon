@@ -66,7 +66,8 @@ export function buildMembers({ watchlist, watched, availability = [], chatMessag
     map.set(key, existing)
   }
 
-  roomMembers.forEach(m => touch(m.pseudo, m.user_id, m.joined_at, m.role))
+  // last_seen_at = heartbeat de présence (poll rooms) — la vraie source du statut "en ligne"
+  roomMembers.forEach(m => touch(m.pseudo, m.user_id, m.last_seen_at || m.joined_at, m.role))
   watched.forEach(w => touch(w.pseudo, w.user_id, w.watched_at))
   availability.forEach(a => touch(a.pseudo, a.user_id, a.updated_at))
   chatMessages.forEach(m => touch(m.pseudo, m.user_id, m.created_at))
@@ -85,7 +86,7 @@ export function buildMembers({ watchlist, watched, availability = [], chatMessag
         seen: memberSeen,
         percent: total > 0 ? Math.round((memberSeen / total) * 100) : 0,
         isMe: currentUser && (member.userId === currentUser.id || member.pseudo.toLowerCase() === currentUser.pseudo.toLowerCase()),
-        online: Date.now() - member.lastActive < 10 * 60 * 1000,
+        online: Date.now() - member.lastActive < 5 * 60 * 1000,
       }
     })
     .sort((a, b) => b.seen - a.seen || a.pseudo.localeCompare(b.pseudo))

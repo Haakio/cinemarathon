@@ -793,6 +793,11 @@ html {
 .review-head small { color: var(--text3); font-size: 11px; margin-left: auto; }
 .review-comment { font-size: 13px; color: var(--text2); line-height: 1.55; font-style: italic; }
 
+/* Mot de bienvenue du créateur */
+.welcome-text p { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; }
+.welcome-text p:first-child { color: var(--text); font-size: 15px; }
+.welcome-text b { color: var(--gold); }
+
 /* Patchnotes + consentement chat */
 .patch-box h2 { font-family: var(--font-display); font-size: 24px; margin-bottom: 8px; }
 .patch-box p { color: var(--text2); font-size: 14px; line-height: 1.6; margin-bottom: 12px; }

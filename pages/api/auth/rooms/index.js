@@ -3,7 +3,7 @@ import {
   addRoomMember, createRoom, createRoomInvite, deleteRoom, deleteRoomInvite,
   getFriendship, getPublicRooms, getRoomById, getRoomByInviteToken, getRoomByName,
   getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess,
-  removeRoomMember, setRoomInviteToken, setRoomMemberRole, updateRoomCode, updateRoomImage,
+  removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomImage,
 } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
@@ -36,6 +36,9 @@ export default async function handler(req, res) {
         const members = await getRoomMembers(roomId)
         return res.status(200).json(members)
       }
+
+      // Heartbeat de présence, greffé sur le poll existant (aucun appel en plus)
+      try { await touchUserLastSeen(user.id) } catch { }
 
       const rooms = await getRooms(user.id)
       return res.status(200).json(rooms)

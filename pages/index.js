@@ -32,6 +32,7 @@ import MovieModal from '../components/modals/MovieModal'
 import RoomModal from '../components/modals/RoomModal'
 import RoomsHubModal from '../components/modals/RoomsHubModal'
 import InviteModal from '../components/modals/InviteModal'
+import WelcomeModal from '../components/modals/WelcomeModal'
 import ProfileModal from '../components/modals/ProfileModal'
 import ChatConsentModal from '../components/modals/ChatConsentModal'
 import ChatWidget from '../components/widgets/ChatWidget'
@@ -67,6 +68,7 @@ export default function App() {
   // ── Room panel (modal) ──────────────────────────────────
   const [roomsHubOpen, setRoomsHubOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
   const [roomMsg, setRoomMsg] = useState('')
@@ -142,6 +144,17 @@ export default function App() {
     const token = getToken()
     if (user && token) { setCurrentUser(user); setAuthed(true) }
   }, [])
+
+  // Mot de bienvenue du créateur : une seule fois, à la première connexion
+  useEffect(() => {
+    if (!authed || !currentUser?.id) return
+    if (localStorage.getItem(`cm_welcome_${currentUser.id}`) !== '1') setWelcomeOpen(true)
+  }, [authed, currentUser])
+
+  function closeWelcome() {
+    if (currentUser?.id) localStorage.setItem(`cm_welcome_${currentUser.id}`, '1')
+    setWelcomeOpen(false)
+  }
 
   // Garde d'accès admin (comportement conservé)
   useEffect(() => {
@@ -625,7 +638,14 @@ export default function App() {
           onLogout={logout}
         />
       )}
-      {chat.chatPromptVisible && <ChatConsentModal onChoose={chat.setChatPreference} />}
+      {welcomeOpen && (
+        <WelcomeModal
+          adminPseudo={process.env.NEXT_PUBLIC_ADMIN_PSEUDO || 'Haakio'}
+          adminAvatar={social.avatarMap[(process.env.NEXT_PUBLIC_ADMIN_PSEUDO || '').toLowerCase()]}
+          onClose={closeWelcome}
+        />
+      )}
+      {chat.chatPromptVisible && !welcomeOpen && <ChatConsentModal onChoose={chat.setChatPreference} />}
 
       {/* Widgets flottants */}
       <ChatWidget chat={chat} currentRoom={currentRoom} currentUser={currentUser} avatarMap={social.avatarMap} />

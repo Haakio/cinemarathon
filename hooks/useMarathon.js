@@ -116,16 +116,21 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
     : (currentRoom.can_manage || canDeleteCurrentRoom || isAdmin)
 
   // Membres de la room : chargés quand une vue en a besoin (vue d'ensemble,
-  // panneau room, admin) — accessible à tous les membres, l'API vérifie l'accès.
+  // panneau room, admin), puis rafraîchis toutes les 60s tant qu'on y reste
+  // (met à jour les statuts "en ligne" sans re-naviguer).
   useEffect(() => {
     if (!pageVisible || !membersWanted) {
       return
     }
     let cancelled = false
-    api('GET', `/auth/rooms?membersRoomId=${encodeURIComponent(currentRoomId)}`)
-      .then(members => { if (!cancelled) setRoomMembers(members) })
-      .catch(() => { if (!cancelled) setRoomMembers([]) })
-    return () => { cancelled = true }
+    const load = () => {
+      api('GET', `/auth/rooms?membersRoomId=${encodeURIComponent(currentRoomId)}`)
+        .then(members => { if (!cancelled) setRoomMembers(members) })
+        .catch(() => { if (!cancelled) setRoomMembers([]) })
+    }
+    load()
+    const timer = setInterval(load, 60000)
+    return () => { cancelled = true; clearInterval(timer) }
   }, [membersWanted, pageVisible, currentRoomId])
 
   const selectRoom = useCallback(roomId => {
