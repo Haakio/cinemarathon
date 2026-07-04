@@ -14,16 +14,22 @@ import { buildActivity, buildMembers, getNextItem, getProgress } from '../../uti
  */
 export default function DashboardView({
   currentRoom, currentUser, watchlist, watched, availability, chatMessages, roomMembers,
-  goal, onSaveGoal, onWatch, onOpenDetails, avatarMap, voteApi,
+  goal, onSaveGoal, onWatch, onOpenDetails, avatarMap, voteApi, onInvite,
 }) {
   const progress = useMemo(() => getProgress(watchlist, watched), [watchlist, watched])
   const seenSetForVote = useMemo(() => new Set(watched.map(w => w.item_id)), [watched])
 
   // Prochain film : le gagnant d'un vote clos (tant qu'il n'est pas vu)
-  // est prioritaire sur l'ordre du marathon.
+  // est prioritaire sur l'ordre du marathon. En cas d'égalité, on attend
+  // que l'admin ait laissé Jimmy trancher (flag serveur — pas de spoiler).
   const nextItem = useMemo(() => {
-    const winnerId = voteApi?.vote?.status === 'closed' ? voteApi.vote.winner_item_id : null
-    if (winnerId && !seenSetForVote.has(winnerId)) {
+    const vote = voteApi?.vote
+    const winnerId = vote?.status === 'closed' ? vote.winner_item_id : null
+    const jimmyPending = (() => {
+      if (!vote?.tie_break) return false
+      try { return !JSON.parse(vote.tie_break).revealed } catch { return false }
+    })()
+    if (winnerId && !jimmyPending && !seenSetForVote.has(winnerId)) {
       const winner = watchlist.find(i => i.id === winnerId)
       if (winner) return winner
     }
@@ -42,7 +48,7 @@ export default function DashboardView({
     <>
       <div className="dash-grid">
         <div className="dash-main">
-          <HeroCard room={currentRoom} progress={progress} memberCount={members.length} watchlist={watchlist} />
+          <HeroCard room={currentRoom} progress={progress} memberCount={members.length} watchlist={watchlist} onInvite={onInvite} />
           <ProgressCard progress={progress} />
           <NextUpCard item={nextItem} onStart={onWatch} onOpenDetails={onOpenDetails} />
           <GoalCard goal={goal} progress={progress} onSaveGoal={onSaveGoal} />

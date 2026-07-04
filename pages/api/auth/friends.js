@@ -1,4 +1,4 @@
-import { acceptFriendRequest, createFriendRequest, deleteFriendship, getFriendship, getFriendships, getUser } from '../../../lib/db'
+import { acceptFriendRequest, createFriendRequest, deleteFriendship, getFriendship, getFriendships, getRoomInvitesFor, getUser } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
 
 /**
@@ -28,10 +28,18 @@ export default async function handler(req, res) {
           since: row.created_at,
         }
       }
+      // Les invitations de room voyagent avec la même requête de session
+      const roomInvites = await getRoomInvitesFor(user.id)
       return res.status(200).json({
         friends: rows.filter(r => r.status === 'accepted').map(shape),
         incoming: rows.filter(r => r.status === 'pending' && r.addressee_id === user.id).map(shape),
         outgoing: rows.filter(r => r.status === 'pending' && r.requester_id === user.id).map(shape),
+        roomInvites: roomInvites.map(invite => ({
+          roomId: invite.room_id,
+          roomName: invite.room_name || 'Room',
+          fromPseudo: invite.from_pseudo || 'Un membre',
+          since: invite.created_at,
+        })),
       })
     }
 

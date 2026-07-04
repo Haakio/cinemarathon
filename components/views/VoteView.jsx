@@ -7,7 +7,7 @@ import VoteComposer from '../cards/VoteComposer'
  * même source que la cloche de la sidebar).
  */
 export default function VoteView({ currentRoom, currentUser, watchlist, watched, avatarMap, voteApi, canManage }) {
-  const { vote, ballots, myBallot, castBallot, createVote, cancelActiveVote } = voteApi
+  const { vote, ballots, myBallot, castBallot, createVote, cancelActiveVote, revealJimmy } = voteApi
   const isOpen = vote?.status === 'open'
   const hasResult = vote?.status === 'closed' && vote.winner_item_id
 
@@ -27,6 +27,8 @@ export default function VoteView({ currentRoom, currentUser, watchlist, watched,
           currentUser={currentUser}
           avatarMap={avatarMap}
           onBallot={castBallot}
+          canManage={canManage}
+          onReveal={revealJimmy}
         />
       )}
 

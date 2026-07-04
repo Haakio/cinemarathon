@@ -1,6 +1,6 @@
 import {
   cancelVote, closeVote, createVote, getLatestVote, getVoteBallots,
-  hasRoomAccess, hasRoomManageAccess, upsertVoteBallot,
+  hasRoomAccess, hasRoomManageAccess, updateVoteTieBreak, upsertVoteBallot,
 } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
 
@@ -111,6 +111,22 @@ export default async function handler(req, res) {
         const itemIds = JSON.parse(vote.item_ids || '[]')
         if (!itemIds.includes(itemId)) return res.status(400).json({ error: 'Film hors du vote' })
         await upsertVoteBallot({ voteId, userId: user.id, pseudo: user.pseudo, itemId })
+        return res.status(200).json({ ok: true })
+      }
+
+      if (action === 'reveal') {
+        // Seul l'admin déclenche Jimmy : le verdict devient public pour
+        // tous les membres en même temps (stocké dans tie_break.revealed).
+        if (!await canManage(roomId, user)) return res.status(403).json({ error: 'Seul l\'admin peut laisser Jimmy trancher' })
+        const vote = await getLatestVote(roomId)
+        if (!vote || vote.status !== 'closed' || !vote.tie_break) {
+          return res.status(409).json({ error: 'Aucune égalité à trancher' })
+        }
+        const tieBreak = JSON.parse(vote.tie_break)
+        if (!tieBreak.revealed) {
+          tieBreak.revealed = true
+          await updateVoteTieBreak(vote.id, JSON.stringify(tieBreak))
+        }
         return res.status(200).json({ ok: true })
       }
 

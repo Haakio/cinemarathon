@@ -71,6 +71,14 @@ const PATHS = {
       <path d="M16 5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4.5-6.2" />
     </>
   ),
+  // Salles (hub des rooms)
+  door: (
+    <>
+      <path d="M13 3.5H6a1 1 0 0 0-1 1v16h8" />
+      <path d="M13 3.5l6 1.8V19l-6 1.5V3.5z" />
+      <circle cx="15.4" cy="12" r="0.6" />
+    </>
+  ),
   // Vote (urne avec bulletin)
   vote: (
     <>

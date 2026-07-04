@@ -33,7 +33,7 @@ function useCountdown(endsAt, active) {
  * avatars des votants, compte à rebours. Une fois clos : gagnant — et en
  * cas d'égalité, le bouton "Laisser Jimmy choisir".
  */
-export default function VoteCard({ vote, ballots, myBallot, watchlist, currentUser, avatarMap, onBallot }) {
+export default function VoteCard({ vote, ballots, myBallot, watchlist, currentUser, avatarMap, onBallot, canManage = false, onReveal }) {
   const [jimmyOpen, setJimmyOpen] = useState(false)
   const isOpen = vote.status === 'open'
   const countdown = useCountdown(vote.ends_at, isOpen)
@@ -52,6 +52,10 @@ export default function VoteCard({ vote, ballots, myBallot, watchlist, currentUs
   const tieBreak = useMemo(() => {
     try { return vote.tie_break ? JSON.parse(vote.tie_break) : null } catch { return null }
   }, [vote.tie_break])
+
+  // Le verdict d'une égalité est PARTAGÉ : il ne devient visible pour tout
+  // le monde que lorsque l'admin a laissé Jimmy trancher (flag serveur).
+  const revealed = !tieBreak || tieBreak.revealed === true
 
   const winner = vote.winner_item_id ? watchlist.find(w => w.id === vote.winner_item_id) : null
   const avatarOf = ballot => avatarMap[ballot.user_id] || avatarMap[(ballot.pseudo || '').toLowerCase()] || {}
@@ -74,7 +78,7 @@ export default function VoteCard({ vote, ballots, myBallot, watchlist, currentUs
         {options.map(item => {
           const count = countFor(item.id)
           const mine = myBallot?.item_id === item.id
-          const isWinner = !isOpen && vote.winner_item_id === item.id
+          const isWinner = !isOpen && revealed && vote.winner_item_id === item.id
           return (
             <button
               key={item.id}
@@ -109,15 +113,26 @@ export default function VoteCard({ vote, ballots, myBallot, watchlist, currentUs
 
       {!isOpen && winner && (
         <div className="vote-result-row">
-          {tieBreak ? (
-            <>
-              <span>Égalité parfaite entre les deux premiers...</span>
-              <button className="btn-play" style={{ marginTop: 0 }} onClick={() => setJimmyOpen(true)}>
-                {JIMMY_CONFIG.buttonLabel}
-              </button>
-            </>
+          {tieBreak && !revealed ? (
+            canManage ? (
+              <>
+                <span>Égalité parfaite ! À vous de déclencher le verdict — tout le monde le découvrira en même temps. 🤫</span>
+                <button className="btn-play" style={{ marginTop: 0 }} onClick={() => setJimmyOpen(true)}>
+                  {JIMMY_CONFIG.buttonLabel}
+                </button>
+              </>
+            ) : (
+              <span>Égalité parfaite entre les deux premiers... En attente que l'admin laisse Jimmy trancher. 🚪⏳</span>
+            )
           ) : (
-            <span>🏆 <b>{winner.title}</b> remporte le vote — c'est le prochain film de la séance !</span>
+            <>
+              <span>🏆 <b>{winner.title}</b> remporte le vote — c'est le prochain film de la séance !</span>
+              {tieBreak && (
+                <button className="btn-ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => setJimmyOpen(true)}>
+                  {revealed ? 'Revoir Jimmy 🚪' : JIMMY_CONFIG.buttonLabel}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -127,6 +142,7 @@ export default function VoteCard({ vote, ballots, myBallot, watchlist, currentUs
           leftItem={watchlist.find(w => w.id === tieBreak.left)}
           rightItem={watchlist.find(w => w.id === tieBreak.right)}
           winnerSide={tieBreak.winnerSide}
+          onFinished={!revealed && canManage ? onReveal : undefined}
           onClose={() => setJimmyOpen(false)}
         />
       )}

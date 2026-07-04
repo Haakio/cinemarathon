@@ -4,7 +4,7 @@ import { formatDate } from '../../utils/format'
  * Hero du dashboard : identité du marathon en grand format cinématique.
  * Le backdrop provient du premier titre avec image (TMDB), sinon dégradé.
  */
-export default function HeroCard({ room, progress, memberCount, watchlist }) {
+export default function HeroCard({ room, progress, memberCount, watchlist, onInvite }) {
   const backdrop = watchlist.find(item => item.backdrop)?.backdrop
     || watchlist.find(item => item.poster)?.poster
     || ''
@@ -34,6 +34,11 @@ export default function HeroCard({ room, progress, memberCount, watchlist }) {
             <div className="hero-meta-item"><b>{formatDate(room.created_at)}</b><span>Créé le</span></div>
           )}
         </div>
+        {onInvite && (
+          <button className="hero-invite" onClick={onInvite}>
+            🔗 Inviter
+          </button>
+        )}
       </div>
     </section>
   )

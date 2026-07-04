@@ -8,7 +8,7 @@ import { JIMMY_CONFIG } from '../../utils/constants'
  * gagnant DÉJÀ tiré au sort côté serveur — tout le monde voit pareil.
  * Fallback : roulette animée si la vidéo est absente.
  */
-export default function JimmyPlayer({ leftItem, rightItem, winnerSide, onClose }) {
+export default function JimmyPlayer({ leftItem, rightItem, winnerSide, onFinished, onClose }) {
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
   const [mode, setMode] = useState('video') // 'video' | 'roulette'
@@ -17,6 +17,11 @@ export default function JimmyPlayer({ leftItem, rightItem, winnerSide, onClose }
 
   const winnerItem = winnerSide === 'left' ? leftItem : rightItem
   const videoSrc = winnerSide === 'left' ? JIMMY_CONFIG.videoLeft : JIMMY_CONFIG.videoRight
+
+  // Prévenir le parent quand le verdict est tombé (démasque le gagnant)
+  useEffect(() => {
+    if (finished) onFinished?.()
+  }, [finished, onFinished])
 
   // ── Mode vidéo : chroma key ─────────────────────────────
   useEffect(() => {

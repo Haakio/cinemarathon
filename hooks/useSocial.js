@@ -21,6 +21,7 @@ export function useSocial({ authed, currentUser, onError }) {
   const [incoming, setIncoming] = useState([])
   const [outgoing, setOutgoing] = useState([])
   const [avatarMap, setAvatarMap] = useState({})
+  const [roomInvites, setRoomInvites] = useState([])
   const [notifSeenAt, setNotifSeenAt] = useState(null)
 
   const loadSocial = useCallback(async () => {
@@ -35,6 +36,7 @@ export function useSocial({ authed, currentUser, onError }) {
       setFriends(friendData.friends || [])
       setIncoming(friendData.incoming || [])
       setOutgoing(friendData.outgoing || [])
+      setRoomInvites(friendData.roomInvites || [])
       // Map de lookup : par userId ET par pseudo (les données du marathon
       // ne portent parfois que le pseudo)
       const map = {}
@@ -123,8 +125,12 @@ export function useSocial({ authed, currentUser, onError }) {
     return patchnoteHistory.filter(entry => entry.date > notifSeenAt.slice(0, 10)).length
   }, [notifSeenAt])
 
-  // Les demandes d'amis comptent tant qu'elles ne sont pas traitées
-  const unreadCount = unreadPatchnotes + incoming.length
+  // Demandes d'amis + invitations de room comptent tant que non traitées
+  const unreadCount = unreadPatchnotes + incoming.length + roomInvites.length
+
+  const removeRoomInvite = useCallback(roomId => {
+    setRoomInvites(prev => prev.filter(invite => invite.roomId !== roomId))
+  }, [])
 
   const markNotificationsSeen = useCallback(() => {
     if (!currentUser?.id) return
@@ -134,7 +140,7 @@ export function useSocial({ authed, currentUser, onError }) {
   }, [currentUser])
 
   return {
-    profile, friends, incoming, outgoing, avatarMap,
+    profile, friends, incoming, outgoing, avatarMap, roomInvites, removeRoomInvite,
     updateAvatar, sendFriendRequest, acceptFriend, declineFriend, removeFriend, searchMembers,
     unreadCount, unreadPatchnotes, notifSeenAt, markNotificationsSeen,
     reload: loadSocial,

@@ -29,6 +29,8 @@ import VoteView from '../components/views/VoteView'
 // Modals & widgets
 import MovieModal from '../components/modals/MovieModal'
 import RoomModal from '../components/modals/RoomModal'
+import RoomsHubModal from '../components/modals/RoomsHubModal'
+import InviteModal from '../components/modals/InviteModal'
 import ProfileModal from '../components/modals/ProfileModal'
 import ChatConsentModal from '../components/modals/ChatConsentModal'
 import ChatWidget from '../components/widgets/ChatWidget'
@@ -61,10 +63,13 @@ export default function App() {
   const [toastVisible, setToastVisible] = useState(false)
 
   // ── Room panel (modal) ──────────────────────────────────
+  const [roomsHubOpen, setRoomsHubOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
   const [roomMsg, setRoomMsg] = useState('')
   const [newRoomName, setNewRoomName] = useState('')
+  const [newRoomPublic, setNewRoomPublic] = useState(false)
   const [roomCode, setRoomCode] = useState('')
   const [roomJoinName, setRoomJoinName] = useState('')
   const [roomJoinCode, setRoomJoinCode] = useState('')
@@ -173,15 +178,60 @@ export default function App() {
   // ── Actions rooms (mêmes endpoints qu'avant) ────────────
   async function createNewRoom() {
     if (!newRoomName.trim()) { setRoomMsg('Entrez un nom de room.'); return }
-    if (!roomCode.trim()) { setRoomMsg('Entrez un code de room.'); return }
+    if (!newRoomPublic && !roomCode.trim()) { setRoomMsg('Entrez un code de room.'); return }
     try {
-      const room = await api('POST', '/auth/rooms', { name: newRoomName, code: roomCode })
+      const room = await api('POST', '/auth/rooms', { name: newRoomName, code: roomCode, isPublic: newRoomPublic })
       setRooms(prev => [...prev, room])
-      setNewRoomName(''); setRoomCode(''); setRoomMsg('')
+      setNewRoomName(''); setRoomCode(''); setNewRoomPublic(false); setRoomMsg('')
       setRoomPanelOpen(false)
       onSelectRoom(room.id)
-      showToast('Room privée créée.')
+      showToast(newRoomPublic ? 'Room publique créée.' : 'Room privée créée.')
     } catch (e) { setRoomMsg(e.message) }
+  }
+
+  // Lien d'invitation ?invite=TOKEN : rejoint la room après connexion,
+  // puis nettoie l'URL (le paramètre survit à l'écran de login).
+  useEffect(() => {
+    if (!authed) return
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('invite')
+    if (!token) return
+    window.history.replaceState({}, '', window.location.pathname)
+    api('POST', '/auth/rooms', { action: 'joinInvite', token })
+      .then(room => {
+        setRooms(prev => prev.some(existing => existing.id === room.id) ? prev : [...prev, room])
+        onSelectRoom(room.id)
+        showToast(`Bienvenue dans ${room.name} ! 🎬`)
+      })
+      .catch(e => showToast(e.message))
+  }, [authed]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function acceptRoomInvite(invite) {
+    try {
+      const room = await api('POST', '/auth/rooms', { action: 'acceptInvite', roomId: invite.roomId })
+      setRooms(prev => prev.some(existing => existing.id === room.id) ? prev : [...prev, room])
+      social.removeRoomInvite(invite.roomId)
+      setProfileOpen(false)
+      onSelectRoom(room.id)
+      showToast(`Bienvenue dans ${room.name} ! 🎬`)
+    } catch (e) { showToast(e.message) }
+  }
+
+  async function declineRoomInvite(invite) {
+    try {
+      await api('POST', '/auth/rooms', { action: 'declineInvite', roomId: invite.roomId })
+      social.removeRoomInvite(invite.roomId)
+    } catch (e) { showToast(e.message) }
+  }
+
+  async function joinPublicRoom(roomId) {
+    try {
+      const room = await api('POST', '/auth/rooms', { action: 'joinPublic', roomId })
+      setRooms(prev => prev.some(existing => existing.id === room.id) ? prev : [...prev, room])
+      setRoomsHubOpen(false)
+      onSelectRoom(room.id)
+      showToast(`Bienvenue dans ${room.name} !`)
+    } catch (e) { showToast(e.message) }
   }
 
   async function joinPrivateRoom() {
@@ -284,13 +334,11 @@ export default function App() {
         />
 
         <RoomBar
-          rooms={rooms}
-          currentRoomId={currentRoomId}
-          onSelectRoom={onSelectRoom}
+          currentRoom={currentRoom}
+          onOpenHub={() => setRoomsHubOpen(true)}
           canDeleteCurrentRoom={canDeleteCurrentRoom}
           onDeleteRoom={deleteCurrentRoom}
           onLeaveRoom={leaveCurrentRoom}
-          onOpenRoomPanel={() => { setRoomPanelOpen(true); setRoomMsg('') }}
           roomMsg={!roomPanelOpen ? roomMsg : ''}
         />
 
@@ -322,6 +370,7 @@ export default function App() {
                 onOpenDetails={openDetails}
                 avatarMap={social.avatarMap}
                 voteApi={voteApi}
+                onInvite={() => setInviteOpen(true)}
               />
             )}
             {view === VIEWS.VOTE && (
@@ -434,6 +483,26 @@ export default function App() {
           onDeleteReview={deleteReview}
         />
       )}
+      {inviteOpen && (
+        <InviteModal
+          currentRoom={currentRoom}
+          currentRoomId={currentRoomId}
+          friends={social.friends}
+          showToast={showToast}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
+      {roomsHubOpen && (
+        <RoomsHubModal
+          myRooms={rooms.length ? rooms : [{ id: 'marvel', name: 'Marvel' }]}
+          currentRoomId={currentRoomId}
+          onSelectRoom={onSelectRoom}
+          onJoinPublic={joinPublicRoom}
+          onOpenJoinPrivate={() => { setRoomPanelMode('join'); setRoomMsg(''); setRoomPanelOpen(true) }}
+          onOpenCreate={() => { setRoomPanelMode('create'); setRoomMsg(''); setRoomPanelOpen(true) }}
+          onClose={() => setRoomsHubOpen(false)}
+        />
+      )}
       {roomPanelOpen && (
         <RoomModal
           mode={roomPanelMode}
@@ -444,6 +513,8 @@ export default function App() {
           onJoin={joinPrivateRoom}
           newName={newRoomName} setNewName={setNewRoomName}
           newCode={roomCode} setNewCode={setRoomCode}
+          isGlobalAdmin={isAdmin}
+          newIsPublic={newRoomPublic} setNewIsPublic={setNewRoomPublic}
           onCreate={createNewRoom}
           canDeleteCurrentRoom={canDeleteCurrentRoom}
           currentRoom={currentRoom}
@@ -458,6 +529,8 @@ export default function App() {
         <ProfileModal
           social={social}
           currentUser={currentUser}
+          onAcceptRoomInvite={acceptRoomInvite}
+          onDeclineRoomInvite={declineRoomInvite}
           voteNotice={voteApi.voteOpen && voteApi.vote ? {
             myBallot: Boolean(voteApi.myBallot),
             endsAt: voteApi.vote.ends_at,

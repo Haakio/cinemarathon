@@ -48,6 +48,7 @@ function downscaleImage(file, size = 128) {
  */
 export default function ProfileModal({
   social, currentUser, onClose, initialTab = 'profil', voteNotice = null,
+  onAcceptRoomInvite, onDeclineRoomInvite,
   watchlist, watched, availability, chatMessages,
   chatEnabled, onChatPreference, onLogout,
 }) {
@@ -344,6 +345,25 @@ export default function ProfileModal({
         {/* ── NOTIFICATIONS ── */}
         {tab === 'notifications' && (
           <div>
+            {social.roomInvites?.length > 0 && (
+              <>
+                <h4 className="profile-section-title">Invitations de room</h4>
+                {social.roomInvites.map(invite => (
+                  <div className="friend-row" key={invite.roomId}>
+                    <span style={{ fontSize: '20px' }}>🎬</span>
+                    <div className="friend-name">
+                      <b>{invite.fromPseudo}</b> vous invite dans <b>{invite.roomName}</b>
+                      <small style={{ display: 'block', color: 'var(--text3)' }}>{formatRelative(invite.since)}</small>
+                    </div>
+                    <div className="friend-actions">
+                      <button className="friend-accept" onClick={() => onAcceptRoomInvite?.(invite)}>Rejoindre</button>
+                      <button className="friend-decline" onClick={() => onDeclineRoomInvite?.(invite)}>Refuser</button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
             {voteNotice && (
               <>
                 <h4 className="profile-section-title">Vote de séance</h4>

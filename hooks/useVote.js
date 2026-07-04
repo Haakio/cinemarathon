@@ -30,13 +30,20 @@ export function useVote({ authed, currentRoomId, currentUser, view, pageVisible,
     if (authed && pageVisible) loadVote()
   }, [authed, pageVisible, loadVote])
 
-  // Poll rapide 4s : résultats live, seulement sur la page Vote + vote ouvert
+  // Poll rapide 4s, seulement sur la page Vote quand il se passe quelque
+  // chose : vote ouvert (résultats live) OU égalité en attente du verdict
+  // de Jimmy (pour que la révélation de l'admin arrive chez tout le monde).
+  const awaitingJimmy = (() => {
+    if (!vote || vote.status !== 'closed' || !vote.tie_break) return false
+    try { return !JSON.parse(vote.tie_break).revealed } catch { return false }
+  })()
+
   useEffect(() => {
     if (!authed || !pageVisible || view !== VIEWS.VOTE) return
-    if (!vote || vote.status !== 'open') return
+    if (!vote || (vote.status !== 'open' && !awaitingJimmy)) return
     const timer = setInterval(loadVote, 4000)
     return () => clearInterval(timer)
-  }, [authed, pageVisible, view, vote, loadVote])
+  }, [authed, pageVisible, view, vote, awaitingJimmy, loadVote])
 
   // À l'échéance d'un vote ouvert : un seul rechargement (déclenche la
   // clôture serveur), programmé localement — aucun polling.
@@ -74,6 +81,20 @@ export function useVote({ authed, currentRoomId, currentUser, view, pageVisible,
     }
   }, [currentRoomId, onError, loadVote])
 
+  const revealJimmy = useCallback(async () => {
+    try {
+      await api('POST', '/auth/vote', { action: 'reveal', roomId: currentRoomId })
+      // Mise à jour optimiste : le verdict devient visible immédiatement
+      setVote(prev => {
+        if (!prev?.tie_break) return prev
+        try {
+          const tieBreak = JSON.parse(prev.tie_break)
+          return { ...prev, tie_break: JSON.stringify({ ...tieBreak, revealed: true }) }
+        } catch { return prev }
+      })
+    } catch (e) { onError?.(e.message) }
+  }, [currentRoomId, onError])
+
   const cancelActiveVote = useCallback(async () => {
     if (!vote) return
     try {
@@ -86,5 +107,5 @@ export function useVote({ authed, currentRoomId, currentUser, view, pageVisible,
   const myBallot = ballots.find(b => b.user_id === currentUser?.id) || null
   const voteOpen = Boolean(vote && vote.status === 'open')
 
-  return { vote, ballots, myBallot, voteOpen, castBallot, createVote, cancelActiveVote, loadVote }
+  return { vote, ballots, myBallot, voteOpen, castBallot, createVote, cancelActiveVote, revealJimmy, loadVote }
 }

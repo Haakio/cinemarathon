@@ -9,6 +9,7 @@ export default function RoomModal({
   mode, onSetMode, onClose,
   joinName, setJoinName, joinCode, setJoinCode, onJoin,
   newName, setNewName, newCode, setNewCode, onCreate,
+  isGlobalAdmin = false, newIsPublic = false, setNewIsPublic,
   canDeleteCurrentRoom, currentRoom,
   manageCode, setManageCode, onSaveCode,
   roomMembers, onKickMember,
@@ -40,9 +41,22 @@ export default function RoomModal({
           <div className="room-gate-form">
             <label>Nom de la room</label>
             <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Marathon perso" />
-            <label>Code d'accès</label>
-            <input type="password" value={newCode} onChange={e => setNewCode(e.target.value)}
-              placeholder="À donner aux invités" onKeyDown={e => e.key === 'Enter' && onCreate()} />
+            {isGlobalAdmin && (
+              <label className="settings-row" style={{ marginBottom: 0 }}>
+                <span>
+                  <strong>Room publique</strong>
+                  <small>Visible par tous dans le hub, sans code d'accès</small>
+                </span>
+                <input type="checkbox" checked={newIsPublic} onChange={e => setNewIsPublic(e.target.checked)} />
+              </label>
+            )}
+            {!newIsPublic && (
+              <>
+                <label>Code d'accès</label>
+                <input type="password" value={newCode} onChange={e => setNewCode(e.target.value)}
+                  placeholder="À donner aux invités" onKeyDown={e => e.key === 'Enter' && onCreate()} />
+              </>
+            )}
             <button onClick={onCreate}>Créer la salle</button>
           </div>
         )}

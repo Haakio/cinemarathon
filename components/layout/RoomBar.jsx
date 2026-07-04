@@ -1,35 +1,35 @@
+import Icon from '../widgets/Icon'
+
 /**
- * Barre des rooms : pills de sélection + actions (supprimer / quitter / créer).
- * La logique (API) reste dans le parent ; ce composant est purement présentationnel.
+ * Barre des rooms, version épurée : un switcher (ouvre le hub de toutes
+ * les salles) + la room courante uniquement. Les actions sur la room
+ * courante (supprimer / quitter) restent à portée de main.
  */
 export default function RoomBar({
-  rooms, currentRoomId, onSelectRoom,
-  canDeleteCurrentRoom, onDeleteRoom, onLeaveRoom, onOpenRoomPanel,
+  currentRoom, onOpenHub,
+  canDeleteCurrentRoom, onDeleteRoom, onLeaveRoom,
   roomMsg,
 }) {
-  const list = rooms.length ? rooms : [{ id: 'marvel', name: 'Marvel' }]
-
   return (
     <div className="room-bar">
       <div className="room-list">
-        {list.map(room => (
-          <button
-            key={room.id}
-            className={`room-btn ${currentRoomId === room.id ? 'active' : ''}`}
-            onClick={() => onSelectRoom(room.id)}
-          >
-            {room.name}
-          </button>
-        ))}
+        <button className="room-switcher" onClick={onOpenHub} title="Toutes les rooms">
+          <Icon name="door" size={16} />
+          <span>Salles</span>
+        </button>
+        {/* Simple indicateur de la room courante — non cliquable */}
+        <div className="current-room-label">
+          <span className="current-room-dot" />
+          {currentRoom.name}
+        </div>
       </div>
       <div className="room-actions">
         {canDeleteCurrentRoom && (
           <button className="room-delete-btn" onClick={onDeleteRoom}>Supprimer</button>
         )}
-        {currentRoomId !== 'marvel' && !canDeleteCurrentRoom && (
+        {currentRoom.id !== 'marvel' && !canDeleteCurrentRoom && (
           <button className="room-leave-btn" onClick={onLeaveRoom}>Quitter</button>
         )}
-        <button className="room-gate-toggle" onClick={onOpenRoomPanel}>+ Salle privée</button>
       </div>
       {roomMsg && <div className="room-msg">{roomMsg}</div>}
     </div>
