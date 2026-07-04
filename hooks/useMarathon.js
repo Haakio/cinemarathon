@@ -110,8 +110,9 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
   const currentRoom = rooms.find(room => room.id === currentRoomId) || { id: 'marvel', name: 'Marvel' }
   const canDeleteCurrentRoom = currentRoom.id !== 'marvel' &&
     (currentRoom.can_delete || currentRoom.created_by === currentUser?.id || isAdmin)
+  // Marvel : l'admin du site + les admins de room nommés par lui
   const canManageCurrentRoom = currentRoom.id === 'marvel'
-    ? isAdmin
+    ? (isAdmin || Boolean(currentRoom.can_manage))
     : (currentRoom.can_manage || canDeleteCurrentRoom || isAdmin)
 
   // Membres de la room : chargés quand une vue en a besoin (vue d'ensemble,

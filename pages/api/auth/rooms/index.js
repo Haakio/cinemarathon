@@ -81,13 +81,15 @@ export default async function handler(req, res) {
       if (action === 'setRole') {
         if (!roomId || !targetUserId) return res.status(400).json({ error: 'Membre requis' })
         if (!['member', 'admin'].includes(req.body.role)) return res.status(400).json({ error: 'Role invalide' })
-        if (roomId === 'marvel') return res.status(400).json({ error: 'Impossible de modifier Marvel' })
 
         const room = await getRoomById(roomId)
         if (!room) return res.status(404).json({ error: 'Room introuvable' })
 
         const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
-        const canSetRole = room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo)
+        // Marvel (et rooms publiques) : seul l'admin du site nomme des admins
+        const canSetRole = roomId === 'marvel'
+          ? (adminPseudo && user.pseudo === adminPseudo)
+          : (room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo))
         if (!canSetRole) return res.status(403).json({ error: 'Seul le createur peut gerer les admins' })
         if (targetUserId === room.created_by) return res.status(400).json({ error: 'Le createur reste owner' })
 

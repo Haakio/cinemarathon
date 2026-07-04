@@ -178,7 +178,8 @@ export default function AdminView({
   }
 
   async function setRoomAdmin(member, makeAdmin) {
-    if (!canDeleteCurrentRoom || member.user_id === currentRoom.created_by) return
+    // Rooms privées : le créateur. Marvel : l'admin du site.
+    if (!(canDeleteCurrentRoom || isGlobalAdmin) || member.user_id === currentRoom.created_by) return
     try {
       await api('POST', '/auth/rooms', {
         action: 'setRole',
@@ -362,7 +363,7 @@ export default function AdminView({
           </div>
         )}
 
-        {canDeleteCurrentRoom && (
+        {(canDeleteCurrentRoom || isGlobalAdmin) && (
           <div className="card anim-up-3">
             <h2>Admins de room</h2>
             {roomMembers.length === 0 ? (
