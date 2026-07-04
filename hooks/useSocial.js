@@ -15,7 +15,7 @@ function getNotifSeenAt(userId) {
   return typeof window !== 'undefined' ? localStorage.getItem(`cm_notif_seen_${userId}`) : null
 }
 
-export function useSocial({ authed, currentUser, pageVisible = true, onNotify, onError }) {
+export function useSocial({ authed, currentUser, pageVisible = true, onNotify, onError, onSessionInvalid }) {
   const [profile, setProfile] = useState(null)
   const [friends, setFriends] = useState([])
   const [incoming, setIncoming] = useState([])
@@ -84,7 +84,11 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
         map[(a.pseudo || '').toLowerCase()] = a
       })
       setAvatarMap(map)
-    } catch { }
+    } catch (err) {
+      // Session fantôme : le token est encore signé mais le compte n'existe
+      // plus (supprimé) → déconnexion forcée.
+      if (err?.status === 404) onSessionInvalid?.()
+    }
   }, [authed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chargement au login + resynchronisation au retour d'onglet

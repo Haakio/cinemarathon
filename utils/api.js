@@ -70,6 +70,10 @@ export async function api(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erreur')
+  if (!res.ok) {
+    const error = new Error(data.error || 'Erreur')
+    error.status = res.status // permet de détecter les sessions fantômes (404 profil)
+    throw error
+  }
   return data
 }

@@ -114,7 +114,11 @@ export default function App() {
   } = marathon
 
   const chat = useChat({ authed, currentUser, currentRoomId, pageVisible: isActive, onError: showToast })
-  const social = useSocial({ authed, currentUser, pageVisible: isActive, onNotify: pushPopup, onError: showToast })
+  const social = useSocial({
+    authed, currentUser, pageVisible: isActive,
+    onNotify: pushPopup, onError: showToast,
+    onSessionInvalid: () => { logout(); showToast('Ce compte n\'existe plus.') },
+  })
   const voteApi = useVote({ authed, currentRoomId, currentUser, view, pageVisible: isActive, onError: showToast })
 
   // Cloche sur l'entrée "Vote film" de la sidebar : vote ouvert pas encore voté
