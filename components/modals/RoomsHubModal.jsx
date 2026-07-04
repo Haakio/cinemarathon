@@ -36,6 +36,7 @@ export default function RoomsHubModal({
     const mine = myRooms.map(room => ({
       id: room.id,
       name: room.name,
+      image: room.image || publicRooms.find(p => p.id === room.id)?.image || '',
       isPublic: room.id === 'marvel' || room.is_private === false,
       joined: true,
       memberCount: publicRooms.find(p => p.id === room.id)?.member_count ?? null,
@@ -45,6 +46,7 @@ export default function RoomsHubModal({
       .map(room => ({
         id: room.id,
         name: room.name,
+        image: room.image || '',
         isPublic: true,
         joined: false,
         memberCount: room.member_count ?? null,
@@ -54,6 +56,7 @@ export default function RoomsHubModal({
       .filter(entry => {
         if (filter === 'mine' && !entry.joined) return false
         if (filter === 'public' && !entry.isPublic) return false
+        if (filter === 'private' && entry.isPublic) return false
         if (q && !entry.name.toLowerCase().includes(q)) return false
         return true
       })
@@ -82,7 +85,7 @@ export default function RoomsHubModal({
         </div>
 
         <div className="filters" style={{ marginBottom: '16px' }}>
-          {[['all', 'Toutes'], ['mine', 'Mes rooms'], ['public', 'Publiques']].map(([value, label]) => (
+          {[['all', 'Toutes'], ['mine', 'Mes rooms'], ['public', 'Publiques'], ['private', 'Privées']].map(([value, label]) => (
             <button key={value} className={`filter-btn ${filter === value ? 'active' : ''}`} onClick={() => setFilter(value)}>
               {label}
             </button>
@@ -98,7 +101,11 @@ export default function RoomsHubModal({
           )}
           {entries.map(entry => (
             <div key={entry.id} className={`hub-room ${entry.id === currentRoomId ? 'current' : ''}`}>
-              <div className="hub-room-icon"><Icon name="door" size={20} /></div>
+              <div className="hub-room-icon">
+                {entry.image
+                  ? <img src={entry.image} alt="" onError={e => { e.target.style.display = 'none' }} />
+                  : <Icon name="door" size={20} />}
+              </div>
               <div className="hub-room-body">
                 <b>{entry.name}</b>
                 <small>

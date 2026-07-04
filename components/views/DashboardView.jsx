@@ -13,11 +13,15 @@ import { buildActivity, buildMembers, getNextItem, getProgress } from '../../uti
  * Tout est dérivé des données déjà chargées — zéro requête supplémentaire.
  */
 export default function DashboardView({
-  currentRoom, currentUser, watchlist, watched, availability, chatMessages, roomMembers,
+  currentRoom, currentUser, watchlist, watched, seenSource, availability, chatMessages, roomMembers,
   goal, onSaveGoal, onWatch, onOpenDetails, avatarMap, voteApi, onInvite,
 }) {
-  const progress = useMemo(() => getProgress(watchlist, watched), [watchlist, watched])
-  const seenSetForVote = useMemo(() => new Set(watched.map(w => w.item_id)), [watched])
+  // seenSource = watched complet en room privée, ou seulement MES visionnages
+  // en room publique (progression personnelle). Les membres/activité gardent
+  // les données complètes.
+  const seen = seenSource || watched
+  const progress = useMemo(() => getProgress(watchlist, seen), [watchlist, seen])
+  const seenSetForVote = useMemo(() => new Set(seen.map(w => w.item_id)), [seen])
 
   // Prochain film : le gagnant d'un vote clos (tant qu'il n'est pas vu)
   // est prioritaire sur l'ordre du marathon. En cas d'égalité, on attend
@@ -33,8 +37,8 @@ export default function DashboardView({
       const winner = watchlist.find(i => i.id === winnerId)
       if (winner) return winner
     }
-    return getNextItem(watchlist, watched)
-  }, [watchlist, watched, voteApi, seenSetForVote])
+    return getNextItem(watchlist, seen)
+  }, [watchlist, seen, voteApi, seenSetForVote])
   const members = useMemo(
     () => buildMembers({ watchlist, watched, availability, chatMessages, roomMembers, currentUser }),
     [watchlist, watched, availability, chatMessages, roomMembers, currentUser]

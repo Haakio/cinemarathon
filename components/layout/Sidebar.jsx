@@ -44,11 +44,17 @@ export default function Sidebar({ view, onNavigate, currentRoom, memberCount, ca
     <>
       {open && <div className="sidebar-backdrop" onClick={onClose} />}
       <aside className={`sidebar ${open ? 'open' : ''}`}>
-        <div className="sidebar-room">
-          <div className="sidebar-room-name">{currentRoom.name}</div>
-          <div className="sidebar-room-meta">
-            {currentRoom.id === 'marvel' ? 'Salle publique' : 'Salle privée'}
-            {memberCount > 0 ? ` · ${memberCount} membre${memberCount > 1 ? 's' : ''}` : ''}
+        <div className="sidebar-room" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {currentRoom.image && (
+            <img className="sidebar-room-img" src={currentRoom.image} alt=""
+              onError={e => { e.target.style.display = 'none' }} />
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div className="sidebar-room-name">{currentRoom.name}</div>
+            <div className="sidebar-room-meta">
+              {(currentRoom.id === 'marvel' || currentRoom.is_private === false) ? 'Salle publique' : 'Salle privée'}
+              {memberCount > 0 ? ` · ${memberCount} membre${memberCount > 1 ? 's' : ''}` : ''}
+            </div>
           </div>
         </div>
 
@@ -65,7 +71,10 @@ export default function Sidebar({ view, onNavigate, currentRoom, memberCount, ca
           )}
         </nav>
 
-        <div className="sidebar-footer">Cinémarathon · fait pour les soirées entre amis</div>
+        <div className="sidebar-footer">
+          Cinémarathon · fait pour les soirées entre amis
+          <br />Développé avec l'aide d'une IA (Claude)
+        </div>
       </aside>
     </>
   )

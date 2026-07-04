@@ -8,12 +8,13 @@ import { getSeenItemIds } from '../../utils/stats'
  * Vue Regarder : carrousel de séance, notation et commentaire.
  * Logique identique à l'existant (mêmes endpoints, même enchaînement).
  */
-export default function WatchView({ watchlist, watched, currentUser, watchIdx, setWatchIdx, currentRoomId, loadData, showToast }) {
+export default function WatchView({ watchlist, watched, seenSource, currentUser, watchIdx, setWatchIdx, currentRoomId, loadData, showToast }) {
   const [currentRating, setCurrentRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
   const [comment, setComment] = useState('')
 
-  const seenItemIds = getSeenItemIds(watched)
+  // En room publique, la progression et le badge "Déjà vu" sont personnels
+  const seenItemIds = getSeenItemIds(seenSource || watched)
   const currentItem = watchlist[watchIdx] || null
   const myWatchEntry = currentItem
     ? watched.find(w => w.item_id === currentItem.id && w.user_id === currentUser?.id)

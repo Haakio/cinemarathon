@@ -139,6 +139,9 @@ export default function AuthScreen({ onAuthed }) {
         {error && <div className="auth-error">{error}</div>}
         {info && <div className="auth-info">{info}</div>}
       </div>
+      <div className="auth-ai-note">
+        Site développé avec l'aide d'une intelligence artificielle (Claude, Anthropic)
+      </div>
     </div>
   )
 }

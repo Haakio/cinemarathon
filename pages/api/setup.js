@@ -148,6 +148,7 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_hue INTEGER`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT ''`
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS invite_token TEXT`
+    await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image TEXT DEFAULT ''`
     await sql`
       CREATE TABLE IF NOT EXISTS room_invites (
         room_id TEXT NOT NULL,

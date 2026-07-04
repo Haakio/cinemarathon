@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { TYPE_META } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 
@@ -6,8 +6,11 @@ import { formatDate } from '../../utils/format'
  * Déjà vu : avis groupés par titre, filtre "moi seulement".
  * Comportement identique à l'existant.
  */
-export default function SeenView({ watchlist, watched, currentUser, isAdmin, onDeleteReview, onOpenDetails }) {
-  const [filter, setFilter] = useState('all')
+export default function SeenView({ watchlist, watched, currentUser, isAdmin, onDeleteReview, onOpenDetails, defaultFilter = 'all' }) {
+  const [filter, setFilter] = useState(defaultFilter)
+
+  // Room publique → filtre "Moi seulement" par défaut (changement de room inclus)
+  useEffect(() => { setFilter(defaultFilter) }, [defaultFilter])
 
   const groupedItems = useMemo(() => {
     let entries = [...watched]

@@ -3,7 +3,7 @@ import {
   addRoomMember, createRoom, createRoomInvite, deleteRoom, deleteRoomInvite,
   getFriendship, getPublicRooms, getRoomById, getRoomByInviteToken, getRoomByName,
   getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess,
-  removeRoomMember, setRoomInviteToken, setRoomMemberRole, updateRoomCode,
+  removeRoomMember, setRoomInviteToken, setRoomMemberRole, updateRoomCode, updateRoomImage,
 } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
@@ -227,12 +227,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { roomId, code } = req.body || {}
+    const { roomId, code, image } = req.body || {}
     if (!roomId) return res.status(400).json({ error: 'Room requise' })
-    if (roomId === 'marvel') return res.status(400).json({ error: 'La room Marvel reste publique' })
-    if (!code?.trim() || code.trim().length < 3) {
-      return res.status(400).json({ error: 'Code requis (min 3 caracteres)' })
-    }
 
     try {
       const room = await getRoomById(roomId)
@@ -240,8 +236,23 @@ export default async function handler(req, res) {
 
       const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
       const canUpdate = room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo)
-      if (!canUpdate) return res.status(403).json({ error: 'Seul le createur peut changer le code' })
+      if (!canUpdate) return res.status(403).json({ error: 'Seul le createur peut modifier la room' })
 
+      // Image de la room (autorisée aussi pour Marvel, par l'admin du site)
+      if (image !== undefined) {
+        const url = String(image || '').trim()
+        if (url && (!/^https:\/\//i.test(url) || url.length > 500)) {
+          return res.status(400).json({ error: 'URL d\'image invalide (https requis)' })
+        }
+        await updateRoomImage(roomId, url)
+        return res.status(200).json({ ok: true })
+      }
+
+      // Changement de code (rooms privées uniquement)
+      if (roomId === 'marvel') return res.status(400).json({ error: 'La room Marvel reste publique' })
+      if (!code?.trim() || code.trim().length < 3) {
+        return res.status(400).json({ error: 'Code requis (min 3 caracteres)' })
+      }
       const joinCodeHash = await bcrypt.hash(code.trim(), 10)
       await updateRoomCode(roomId, joinCodeHash)
       return res.status(200).json({ ok: true })

@@ -12,6 +12,7 @@ export default function RoomModal({
   isGlobalAdmin = false, newIsPublic = false, setNewIsPublic,
   canDeleteCurrentRoom, currentRoom,
   manageCode, setManageCode, onSaveCode,
+  manageImage, setManageImage, onSaveImage,
   roomMembers, onKickMember,
   roomMsg,
 }) {
@@ -69,6 +70,22 @@ export default function RoomModal({
                 placeholder="Nouveau code d'accès" onKeyDown={e => e.key === 'Enter' && onSaveCode()} />
               <button onClick={onSaveCode}>Mettre à jour</button>
             </div>
+          </div>
+        )}
+
+        {canDeleteCurrentRoom && (
+          <div className="room-code-box">
+            <div className="room-code-title">Photo de {currentRoom.name}</div>
+            <div className="room-code-row">
+              <input value={manageImage} onChange={e => setManageImage(e.target.value)}
+                placeholder="https://... (lien direct vers une image)" onKeyDown={e => e.key === 'Enter' && onSaveImage()} />
+              <button onClick={onSaveImage}>Enregistrer</button>
+            </div>
+            {manageImage && /^https:\/\//i.test(manageImage) && (
+              <img src={manageImage} alt="aperçu"
+                style={{ width: '52px', height: '52px', borderRadius: '12px', objectFit: 'cover', marginTop: '10px', border: '1px solid var(--border)' }}
+                onError={e => { e.target.style.display = 'none' }} />
+            )}
           </div>
         )}
 

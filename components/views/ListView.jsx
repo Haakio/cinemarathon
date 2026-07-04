@@ -7,10 +7,19 @@ import { getSeenItemIds } from '../../utils/stats'
  * Liste du marathon : grille de cartes premium avec filtres.
  * Filtrage 100 % client sur les données déjà chargées.
  */
-export default function ListView({ currentRoom, watchlist, watched, currentUser, onWatch, onOpenDetails }) {
-  const [filter, setFilter] = useState('all')
+const SORTS = [
+  ['marathon', 'Ordre marathon'],
+  ['year-asc', 'Année ↑'],
+  ['year-desc', 'Année ↓'],
+]
 
-  const seenIds = useMemo(() => getSeenItemIds(watched), [watched])
+export default function ListView({ currentRoom, watchlist, watched, seenSource, currentUser, onWatch, onOpenDetails }) {
+  const [filter, setFilter] = useState('all')
+  const [sort, setSort] = useState('marathon')
+
+  // En room publique, seenSource = uniquement mes visionnages
+  const seen = seenSource || watched
+  const seenIds = useMemo(() => getSeenItemIds(seen), [seen])
   const seenSet = useMemo(() => new Set(seenIds), [seenIds])
 
   const items = useMemo(() => {
@@ -20,8 +29,14 @@ export default function ListView({ currentRoom, watchlist, watched, currentUser,
     if (filter === 'anime') list = list.filter(i => i.type === 'anime')
     if (filter === 'seen') list = list.filter(i => seenSet.has(i.id))
     if (filter === 'unseen') list = list.filter(i => !seenSet.has(i.id))
+
+    // Tri par année de sortie (les titres sans année passent à la fin)
+    if (sort !== 'marathon') {
+      const yearOf = item => parseInt(item.year, 10) || (sort === 'year-asc' ? 9999 : -9999)
+      list.sort((a, b) => sort === 'year-asc' ? yearOf(a) - yearOf(b) : yearOf(b) - yearOf(a))
+    }
     return list
-  }, [watchlist, filter, seenSet])
+  }, [watchlist, filter, sort, seenSet])
 
   const myRatings = useMemo(() => {
     const map = new Map()
@@ -44,6 +59,12 @@ export default function ListView({ currentRoom, watchlist, watched, currentUser,
       <div className="filters anim-up-1">
         {LIST_FILTERS.map(([value, label]) => (
           <button key={value} className={`filter-btn ${filter === value ? 'active' : ''}`} onClick={() => setFilter(value)}>
+            {label}
+          </button>
+        ))}
+        <span className="filters-divider" />
+        {SORTS.map(([value, label]) => (
+          <button key={value} className={`filter-btn ${sort === value ? 'active' : ''}`} onClick={() => setSort(value)}>
             {label}
           </button>
         ))}

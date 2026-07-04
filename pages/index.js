@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 // Hooks (logique data, comportement identique à l'ancienne version)
 import { usePageVisible } from '../hooks/usePageVisible'
@@ -74,6 +74,7 @@ export default function App() {
   const [roomJoinName, setRoomJoinName] = useState('')
   const [roomJoinCode, setRoomJoinCode] = useState('')
   const [roomManageCode, setRoomManageCode] = useState('')
+  const [roomManageImage, setRoomManageImage] = useState('')
 
   const pageVisible = usePageVisible()
 
@@ -101,6 +102,15 @@ export default function App() {
 
   // Cloche sur l'entrée "Vote film" de la sidebar : vote ouvert pas encore voté
   const voteBadge = voteApi.voteOpen && !voteApi.myBallot
+
+  // Dans une room PUBLIQUE, la progression et les coches "Vu" sont
+  // personnelles (sinon les inconnus se spoilent la progression entre eux).
+  // Les avis restent visibles par tous dans les fiches et "Déjà vu".
+  const isPublicRoom = currentRoom.id === 'marvel' || currentRoom.is_private === false
+  const seenSource = useMemo(
+    () => (isPublicRoom ? watched.filter(w => w.user_id === currentUser?.id) : watched),
+    [isPublicRoom, watched, currentUser]
+  )
 
   // ── Cycle de vie ────────────────────────────────────────
   useEffect(() => { setMounted(true) }, [])
@@ -274,6 +284,19 @@ export default function App() {
     } catch (e) { showToast(e.message || 'Impossible de quitter la room.') }
   }
 
+  // Pré-remplit le champ image avec celle de la room courante
+  useEffect(() => {
+    if (roomPanelOpen) setRoomManageImage(currentRoom.image || '')
+  }, [roomPanelOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function saveCurrentRoomImage() {
+    try {
+      await api('PATCH', '/auth/rooms', { roomId: currentRoomId, image: roomManageImage })
+      setRooms(prev => prev.map(room => room.id === currentRoomId ? { ...room, image: roomManageImage.trim() } : room))
+      showToast('Photo de room enregistrée.')
+    } catch (e) { setRoomMsg(e.message) }
+  }
+
   async function saveCurrentRoomCode() {
     if (!canDeleteCurrentRoom) return
     if (!roomManageCode.trim()) { setRoomMsg('Entrez un code pour cette room.'); return }
@@ -323,7 +346,7 @@ export default function App() {
         <Header
           currentUser={currentUser}
           watchlist={watchlist}
-          watched={watched}
+          watched={seenSource}
           onOpenItem={openDetails}
           onToggleSidebar={() => setSidebarOpen(open => !open)}
           onLogout={logout}
@@ -361,6 +384,7 @@ export default function App() {
                 currentUser={currentUser}
                 watchlist={watchlist}
                 watched={watched}
+                seenSource={seenSource}
                 availability={availability}
                 chatMessages={chat.chatMessages}
                 roomMembers={roomMembers}
@@ -378,7 +402,7 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 watchlist={watchlist}
-                watched={watched}
+                watched={seenSource}
                 avatarMap={social.avatarMap}
                 voteApi={voteApi}
                 canManage={canManageCurrentRoom}
@@ -389,6 +413,7 @@ export default function App() {
                 currentRoom={currentRoom}
                 watchlist={watchlist}
                 watched={watched}
+                seenSource={seenSource}
                 currentUser={currentUser}
                 onWatch={goWatch}
                 onOpenDetails={openDetails}
@@ -398,6 +423,7 @@ export default function App() {
               <WatchView
                 watchlist={watchlist}
                 watched={watched}
+                seenSource={seenSource}
                 currentUser={currentUser}
                 watchIdx={watchIdx}
                 setWatchIdx={setWatchIdx}
@@ -410,6 +436,7 @@ export default function App() {
               <SeenView
                 watchlist={watchlist}
                 watched={watched}
+                defaultFilter={isPublicRoom ? 'me' : 'all'}
                 currentUser={currentUser}
                 isAdmin={isAdmin}
                 onDeleteReview={deleteReview}
@@ -422,14 +449,14 @@ export default function App() {
                 currentRoomId={currentRoomId}
                 currentUser={currentUser}
                 watchlist={watchlist}
-                watched={watched}
+                watched={seenSource}
                 availability={availability}
                 loadAvailability={loadAvailability}
                 showToast={showToast}
               />
             )}
             {view === VIEWS.STATS && (
-              <StatsView currentRoom={currentRoom} watchlist={watchlist} watched={watched} />
+              <StatsView currentRoom={currentRoom} watchlist={watchlist} watched={watched} seenSource={seenSource} />
             )}
             {view === VIEWS.CLASSEMENT && (
               <LeaderboardView
@@ -457,7 +484,7 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentRoomId={currentRoomId}
                 watchlist={watchlist}
-                watched={watched}
+                watched={seenSource}
                 voteApi={voteApi}
                 roomMembers={roomMembers}
                 setRoomMembers={setRoomMembers}
@@ -520,6 +547,8 @@ export default function App() {
           currentRoom={currentRoom}
           manageCode={roomManageCode} setManageCode={setRoomManageCode}
           onSaveCode={saveCurrentRoomCode}
+          manageImage={roomManageImage} setManageImage={setRoomManageImage}
+          onSaveImage={saveCurrentRoomImage}
           roomMembers={roomMembers}
           onKickMember={kickRoomMember}
           roomMsg={roomMsg}

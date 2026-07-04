@@ -8,11 +8,13 @@ import {
  * Statistiques : graphiques SVG/CSS faits main (zéro dépendance),
  * calculés à partir des données déjà chargées.
  */
-export default function StatsView({ currentRoom, watchlist, watched }) {
-  const progress = useMemo(() => getProgress(watchlist, watched), [watchlist, watched])
+export default function StatsView({ currentRoom, watchlist, watched, seenSource }) {
+  // Progression/temps : personnels en room publique. Notes/avis : tout le monde.
+  const seen = seenSource || watched
+  const progress = useMemo(() => getProgress(watchlist, seen), [watchlist, seen])
   const genres = useMemo(() => getGenreBreakdown(watchlist), [watchlist])
   const ratings = useMemo(() => getRatingDistribution(watched), [watched])
-  const timeline = useMemo(() => getProgressTimeline(watchlist, watched), [watchlist, watched])
+  const timeline = useMemo(() => getProgressTimeline(watchlist, seen), [watchlist, seen])
 
   const maxGenre = Math.max(1, ...genres.map(g => g.count))
   const maxRating = Math.max(1, ...ratings.map(r => r.count))
