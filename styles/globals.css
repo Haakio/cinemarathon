@@ -793,6 +793,11 @@ html {
 .review-head small { color: var(--text3); font-size: 11px; margin-left: auto; }
 .review-comment { font-size: 13px; color: var(--text2); line-height: 1.55; font-style: italic; }
 
+/* Confirmation maison */
+.confirm-modal { max-width: 420px; }
+.confirm-message { font-size: 14px; color: var(--text2); line-height: 1.6; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
 /* Mot de bienvenue du créateur */
 .welcome-text p { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; }
 .welcome-text p:first-child { color: var(--text); font-size: 15px; }

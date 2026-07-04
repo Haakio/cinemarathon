@@ -48,6 +48,7 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
             icon: '👥',
             title: "Demande d'ami",
             text: `${request.pseudo} veut devenir votre ami`,
+            tab: 'amis', // clic → directement l'onglet Amis (accepter/refuser)
           }))
         nextInvites
           .filter(invite => !prev.inviteIds.has(invite.roomId))
@@ -55,6 +56,7 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
             icon: '🎬',
             title: 'Invitation',
             text: `${invite.fromPseudo} vous invite dans ${invite.roomName}`,
+            tab: 'notifications', // clic → l'onglet où sont Rejoindre/Refuser
           }))
         nextFriends
           .filter(friend => prev.outgoingIds.has(friend.userId) && !prev.friendIds.has(friend.userId))
@@ -62,6 +64,7 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
             icon: '🎉',
             title: 'Nouvel ami',
             text: `${friend.pseudo} a accepté votre demande d'ami`,
+            tab: 'amis',
           }))
       }
       prevSnapshotRef.current = {

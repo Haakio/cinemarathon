@@ -9,7 +9,7 @@ import { TYPE_META } from '../../utils/constants'
  * Discussions : posts façon forum, optionnellement liés à un film de la room.
  * Chargé uniquement à l'ouverture de la vue (aucun polling — bouton Actualiser).
  */
-export default function DiscussionsView({ currentRoom, currentRoomId, currentUser, isAdmin, watchlist, showToast }) {
+export default function DiscussionsView({ currentRoom, currentRoomId, currentUser, isAdmin, watchlist, showToast, askConfirm }) {
   const [posts, setPosts] = useState([])
   const [avatars, setAvatars] = useState({})
   const [loading, setLoading] = useState(true)
@@ -80,7 +80,7 @@ export default function DiscussionsView({ currentRoom, currentRoomId, currentUse
   }
 
   async function deletePost(id) {
-    if (!confirm('Supprimer ce message (et ses réponses) ?')) return
+    if (!(await askConfirm({ title: 'Supprimer ce message', message: 'Le message et toutes ses réponses seront supprimés.', confirmLabel: 'Supprimer', danger: true }))) return
     try {
       await api('DELETE', '/auth/posts', { id, roomId: currentRoomId })
       setPosts(prev => prev.filter(p => p.id !== id && p.parent_id !== id))

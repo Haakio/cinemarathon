@@ -33,6 +33,7 @@ import RoomModal from '../components/modals/RoomModal'
 import RoomsHubModal from '../components/modals/RoomsHubModal'
 import InviteModal from '../components/modals/InviteModal'
 import WelcomeModal from '../components/modals/WelcomeModal'
+import ConfirmModal from '../components/modals/ConfirmModal'
 import ProfileModal from '../components/modals/ProfileModal'
 import ChatConsentModal from '../components/modals/ChatConsentModal'
 import ChatWidget from '../components/widgets/ChatWidget'
@@ -61,6 +62,7 @@ export default function App() {
   const [watchIdx, setWatchIdx] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [profileTab, setProfileTab] = useState('profil')
   const [selectedItem, setSelectedItem] = useState(null)
   const [toast, setToast] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
@@ -101,6 +103,19 @@ export default function App() {
   }, [])
   const dismissPopup = useCallback(id => {
     setPopups(prev => prev.filter(p => p.id !== id))
+  }, [])
+
+  // Confirmation maison (remplace window.confirm) : askConfirm(...) → Promise<bool>
+  const [confirmState, setConfirmState] = useState(null)
+  const askConfirm = useCallback(options => new Promise(resolve => {
+    const opts = typeof options === 'string' ? { message: options } : options
+    setConfirmState({ ...opts, resolve })
+  }), [])
+  const resolveConfirm = useCallback(answer => {
+    setConfirmState(prev => {
+      prev?.resolve(answer)
+      return null
+    })
   }, [])
 
   // ── Données marathon (source de vérité unique) ──────────
@@ -236,7 +251,7 @@ export default function App() {
   }
 
   async function deleteReview(id) {
-    if (!confirm('Supprimer cet avis ?')) return
+    if (!(await askConfirm({ title: 'Supprimer cet avis', message: 'Cette note et ce commentaire seront définitivement supprimés.', confirmLabel: 'Supprimer', danger: true }))) return
     try {
       await api('DELETE', '/auth/watchlist/watched', { id, roomId: currentRoomId })
       showToast('Avis supprimé.')
@@ -320,7 +335,7 @@ export default function App() {
   async function deleteCurrentRoom() {
     const room = rooms.find(entry => entry.id === currentRoomId)
     if (!room || room.id === 'marvel') return
-    if (!window.confirm(`Supprimer la room "${room.name}" et toutes ses données ?`)) return
+    if (!(await askConfirm({ title: `Supprimer ${room.name}`, message: 'La room et TOUTES ses données (films, notes, chat, votes...) seront définitivement supprimées.', confirmLabel: 'Supprimer la room', danger: true }))) return
     try {
       await api('DELETE', '/auth/rooms', { roomId: room.id })
       const nextRooms = rooms.filter(entry => entry.id !== room.id)
@@ -334,7 +349,7 @@ export default function App() {
   async function leaveCurrentRoom() {
     const room = rooms.find(entry => entry.id === currentRoomId)
     if (!room || room.id === 'marvel' || canDeleteCurrentRoom) return
-    if (!window.confirm(`Quitter la room "${room.name}" ?`)) return
+    if (!(await askConfirm({ title: `Quitter ${room.name}`, message: 'Vous pourrez la rejoindre à nouveau avec le code ou une invitation.', confirmLabel: 'Quitter la room' }))) return
     try {
       await api('POST', '/auth/rooms', { action: 'leave', roomId: room.id })
       const nextRooms = rooms.filter(entry => entry.id !== room.id)
@@ -370,7 +385,7 @@ export default function App() {
 
   async function kickRoomMember(member) {
     if (!canDeleteCurrentRoom || member.user_id === currentRoom.created_by) return
-    if (!window.confirm(`Retirer ${member.pseudo || 'ce membre'} de ${currentRoom.name} ?`)) return
+    if (!(await askConfirm({ title: `Retirer ${member.pseudo || 'ce membre'}`, message: `Il sera retiré de ${currentRoom.name} (il pourra revenir avec le code ou une invitation).`, confirmLabel: 'Retirer', danger: true }))) return
     try {
       await api('POST', '/auth/rooms', { action: 'kick', roomId: currentRoomId, targetUserId: member.user_id })
       setRoomMembers(prev => prev.filter(entry => entry.user_id !== member.user_id))
@@ -414,7 +429,7 @@ export default function App() {
           profile={social.profile}
           unreadCount={social.unreadCount}
           voteBadge={voteBadge}
-          onOpenProfile={() => setProfileOpen(true)}
+          onOpenProfile={() => { setProfileTab('profil'); setProfileOpen(true) }}
         />
 
         <RoomBar
@@ -538,6 +553,7 @@ export default function App() {
                 isAdmin={isAdmin}
                 watchlist={watchlist}
                 showToast={showToast}
+                askConfirm={askConfirm}
               />
             )}
             {view === VIEWS.ADMIN && canManageCurrentRoom && (
@@ -553,6 +569,7 @@ export default function App() {
                 isGlobalAdmin={isAdmin}
                 loadData={loadData}
                 showToast={showToast}
+                askConfirm={askConfirm}
               />
             )}
           </main>
@@ -619,6 +636,7 @@ export default function App() {
         <ProfileModal
           social={social}
           currentUser={currentUser}
+          initialTab={profileTab}
           isGlobalAdmin={isAdmin}
           showToast={showToast}
           onAcceptRoomInvite={acceptRoomInvite}
@@ -652,9 +670,23 @@ export default function App() {
       <FeedbackWidget currentRoom={currentRoom} showToast={showToast} />
       <PopupStack
         popups={popups}
-        onOpen={popup => { dismissPopup(popup.id); setProfileOpen(true) }}
+        onOpen={popup => {
+          dismissPopup(popup.id)
+          setProfileTab(popup.tab || 'notifications')
+          setProfileOpen(true)
+        }}
         onDismiss={dismissPopup}
       />
+      {confirmState && (
+        <ConfirmModal
+          title={confirmState.title}
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          danger={confirmState.danger}
+          onConfirm={() => resolveConfirm(true)}
+          onCancel={() => resolveConfirm(false)}
+        />
+      )}
       <Toast message={toast} visible={toastVisible} />
     </>
   )

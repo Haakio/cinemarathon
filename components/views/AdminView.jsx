@@ -15,7 +15,7 @@ const EMPTY_FORM = {
  */
 export default function AdminView({
   currentRoom, currentRoomId, watchlist, watched = [], roomMembers, setRoomMembers,
-  canDeleteCurrentRoom, isGlobalAdmin, loadData, showToast, voteApi,
+  canDeleteCurrentRoom, isGlobalAdmin, loadData, showToast, voteApi, askConfirm,
 }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
@@ -146,7 +146,7 @@ export default function AdminView({
   }
 
   async function deleteItem(id) {
-    if (!confirm('Supprimer ce titre ?')) return
+    if (!(await askConfirm({ title: 'Supprimer ce titre', message: 'Le titre et tous les avis associés seront supprimés de la room.', confirmLabel: 'Supprimer', danger: true }))) return
     try {
       await api('DELETE', `/auth/watchlist/${id}`, { roomId: currentRoomId })
       loadData()
@@ -186,7 +186,7 @@ export default function AdminView({
     const pseudo = deletePseudo.trim()
     if (!pseudo) { showToast('Entrez le pseudo du compte.'); return }
     if (deleteConfirm !== pseudo) { showToast('Retapez le pseudo exact dans la confirmation.'); return }
-    if (!window.confirm(`SUPPRIMER DÉFINITIVEMENT le compte "${pseudo}" et toutes ses données (notes, messages, rooms privées...) ?`)) return
+    if (!(await askConfirm({ title: `Supprimer le compte ${pseudo}`, message: 'SUPPRESSION DÉFINITIVE : le compte, ses notes, messages, amitiés, votes, posts et ses rooms privées. Aucun retour en arrière possible.', confirmLabel: 'Supprimer définitivement', danger: true }))) return
     setDeleteLoading(true)
     try {
       await api('POST', '/auth/delete-account', { pseudo, confirm: deleteConfirm })
