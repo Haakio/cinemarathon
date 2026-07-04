@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 // Hooks (logique data, comportement identique à l'ancienne version)
 import { usePageVisible } from '../hooks/usePageVisible'
+import { useIdle } from '../hooks/useIdle'
 import { useMarathon } from '../hooks/useMarathon'
 import { useChat } from '../hooks/useChat'
 import { useSocial } from '../hooks/useSocial'
@@ -78,6 +79,10 @@ export default function App() {
   const [roomManageImage, setRoomManageImage] = useState('')
 
   const pageVisible = usePageVisible()
+  const idle = useIdle(60000)
+  // "Actif" = onglet visible ET une interaction dans la dernière minute.
+  // Tous les pollings s'alignent dessus : site ouvert mais inutilisé = 0 requête.
+  const isActive = pageVisible && !idle
 
   const showToast = useCallback(msg => {
     setToast(msg)
@@ -98,7 +103,7 @@ export default function App() {
 
   // ── Données marathon (source de vérité unique) ──────────
   const marathon = useMarathon({
-    authed, currentUser, view, pageVisible,
+    authed, currentUser, view, pageVisible: isActive,
     membersWanted: roomPanelOpen || view === VIEWS.ADMIN || view === VIEWS.OVERVIEW,
   })
   const {
@@ -108,9 +113,9 @@ export default function App() {
     loadData, loadAvailability, reset,
   } = marathon
 
-  const chat = useChat({ authed, currentUser, currentRoomId, pageVisible, onError: showToast })
-  const social = useSocial({ authed, currentUser, pageVisible, onNotify: pushPopup, onError: showToast })
-  const voteApi = useVote({ authed, currentRoomId, currentUser, view, pageVisible, onError: showToast })
+  const chat = useChat({ authed, currentUser, currentRoomId, pageVisible: isActive, onError: showToast })
+  const social = useSocial({ authed, currentUser, pageVisible: isActive, onNotify: pushPopup, onError: showToast })
+  const voteApi = useVote({ authed, currentRoomId, currentUser, view, pageVisible: isActive, onError: showToast })
 
   // Cloche sur l'entrée "Vote film" de la sidebar : vote ouvert pas encore voté
   const voteBadge = voteApi.voteOpen && !voteApi.myBallot
