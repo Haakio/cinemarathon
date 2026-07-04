@@ -1066,6 +1066,14 @@ html {
 }
 .btn-add:hover { transform: translateY(-1px); box-shadow: 0 8px 24px var(--gold-glow); }
 .btn-ghost { width: 100%; margin-top: 8px; padding: 11px; background: none; border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius-sm); font-size: 13px; }
+.danger-card { border-color: rgba(224, 82, 82, 0.35); }
+.btn-danger {
+  width: 100%; padding: 13px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 800;
+  background: rgba(224, 82, 82, 0.12); border: 1px solid rgba(224, 82, 82, 0.55); color: #ff8a8a;
+  transition: all 0.2s;
+}
+.btn-danger:hover:not(:disabled) { background: var(--red); color: #fff; }
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
 .admin-msg { margin-top: 10px; font-size: 13px; text-align: center; }
 .admin-list { display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; }

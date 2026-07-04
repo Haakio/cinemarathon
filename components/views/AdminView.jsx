@@ -26,6 +26,11 @@ export default function AdminView({
   const [resetResult, setResetResult] = useState(null)
   const [resetLoading, setResetLoading] = useState(false)
 
+  // Suppression de compte (admin global uniquement)
+  const [deletePseudo, setDeletePseudo] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
   // Recherche TMDB (debounce 400 ms pour limiter les appels)
   const [tmdbQuery, setTmdbQuery] = useState('')
   const [tmdbResults, setTmdbResults] = useState([])
@@ -175,6 +180,24 @@ export default function AdminView({
     navigator.clipboard?.writeText(resetResult.code)
       .then(() => showToast('Code copié ✓'))
       .catch(() => showToast('Copie impossible, notez le code manuellement.'))
+  }
+
+  async function deleteAccount() {
+    const pseudo = deletePseudo.trim()
+    if (!pseudo) { showToast('Entrez le pseudo du compte.'); return }
+    if (deleteConfirm !== pseudo) { showToast('Retapez le pseudo exact dans la confirmation.'); return }
+    if (!window.confirm(`SUPPRIMER DÉFINITIVEMENT le compte "${pseudo}" et toutes ses données (notes, messages, rooms privées...) ?`)) return
+    setDeleteLoading(true)
+    try {
+      await api('POST', '/auth/delete-account', { pseudo, confirm: deleteConfirm })
+      setDeletePseudo('')
+      setDeleteConfirm('')
+      showToast(`Compte "${pseudo}" supprimé.`)
+      loadData()
+    } catch (e) {
+      showToast(e.message)
+    }
+    setDeleteLoading(false)
   }
 
   async function setRoomAdmin(member, makeAdmin) {
@@ -360,6 +383,33 @@ export default function AdminView({
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {isGlobalAdmin && (
+          <div className="card danger-card anim-up-3">
+            <h2>⚠️ Supprimer un compte</h2>
+            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
+              Suppression <strong style={{ color: 'var(--red)' }}>définitive et irréversible</strong> :
+              le compte, ses notes, messages, amitiés, votes, posts et ses rooms privées.
+            </p>
+            <div className="admin-form-group">
+              <label>Pseudo du compte</label>
+              <input className="admin-input" value={deletePseudo} onChange={e => setDeletePseudo(e.target.value)}
+                placeholder="Pseudo à supprimer" />
+            </div>
+            <div className="admin-form-group">
+              <label>Confirmation — retapez le pseudo</label>
+              <input className="admin-input" value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder="Retapez le pseudo exact" />
+            </div>
+            <button
+              className="btn-danger"
+              onClick={deleteAccount}
+              disabled={deleteLoading || !deletePseudo.trim() || deleteConfirm !== deletePseudo.trim()}
+            >
+              {deleteLoading ? 'Suppression...' : 'Supprimer définitivement ce compte'}
+            </button>
           </div>
         )}
 
