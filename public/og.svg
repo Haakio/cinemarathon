@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F3D675"/>
+      <stop offset="0.55" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#8B6914"/>
+    </linearGradient>
+    <linearGradient id="goldTop" x1="0" y1="0" x2="1" y2="0.4">
+      <stop offset="0" stop-color="#F7E39A"/>
+      <stop offset="1" stop-color="#D9B855"/>
+    </linearGradient>
+    <linearGradient id="titleGold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFF6D8"/>
+      <stop offset="0.5" stop-color="#E8C87A"/>
+      <stop offset="1" stop-color="#C9A84C"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.25" r="0.9">
+      <stop offset="0" stop-color="#C9A84C" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#C9A84C" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#C9A84C" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="stickClip">
+      <rect x="0" y="0" width="228" height="54" rx="15"/>
+    </clipPath>
+  </defs>
+
+  <!-- Fond noir + halo doré -->
+  <rect width="1200" height="630" fill="#070707"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="14" y="14" width="1172" height="602" rx="26" fill="none" stroke="#C9A84C" stroke-opacity="0.3" stroke-width="2"/>
+
+  <!-- Clap de cinéma (à gauche) -->
+  <g transform="translate(105 175)">
+    <!-- Baguette ouverte -->
+    <g transform="rotate(-12 12 62)">
+      <g transform="translate(-6 8)">
+        <rect x="0" y="0" width="228" height="54" rx="15" fill="url(#goldTop)"/>
+        <g clip-path="url(#stickClip)" fill="#0A0A0A">
+          <path d="M30 0l42 54h36L66 0z"/>
+          <path d="M108 0l42 54h36l-42-54z"/>
+          <path d="M186 0l42 54h36l-42-54z"/>
+        </g>
+      </g>
+    </g>
+    <!-- Corps -->
+    <rect x="-6" y="62" width="228" height="156" rx="20" fill="url(#gold)"/>
+    <rect x="-6" y="62" width="228" height="18" fill="#F7E39A"/>
+    <!-- Charnière -->
+    <circle cx="15" cy="77" r="13" fill="#0A0A0A"/>
+    <circle cx="15" cy="77" r="6" fill="#C9A84C"/>
+    <!-- Play -->
+    <path d="M78 105 L156 140 L78 175 Z" fill="#0A0A0A" stroke="#0A0A0A" stroke-width="16" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Textes -->
+  <text x="420" y="270" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="86" letter-spacing="4" fill="url(#titleGold)">CINÉMARATHON</text>
+  <text x="423" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="34" letter-spacing="10" fill="#9B9080">LE MARATHON ENTRE AMIS</text>
+
+  <!-- Points forts -->
+  <g font-family="Arial, Helvetica, sans-serif" font-size="27" fill="#F0EAD6">
+    <circle cx="435" cy="407" r="5" fill="#C9A84C"/>
+    <text x="455" y="417">Listes de films et progression en groupe</text>
+    <circle cx="435" cy="459" r="5" fill="#C9A84C"/>
+    <text x="455" y="469">Votes de séance, notes et discussions</text>
+    <circle cx="435" cy="511" r="5" fill="#C9A84C"/>
+    <text x="455" y="521">Planifiez vos soirées ciné entre amis</text>
+  </g>
+
+  <!-- URL -->
+  <text x="1120" y="580" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="26" letter-spacing="2" fill="#C9A84C">cinémarathon.com</text>
+</svg>

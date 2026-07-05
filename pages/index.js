@@ -16,6 +16,7 @@ import RoomBar from '../components/layout/RoomBar'
 
 // Vues
 import AuthScreen from '../components/views/AuthScreen'
+import SeoLanding from '../components/views/SeoLanding'
 import DashboardView from '../components/views/DashboardView'
 import ListView from '../components/views/ListView'
 import WatchView from '../components/views/WatchView'
@@ -396,15 +397,33 @@ export default function App() {
   // ── Rendu ───────────────────────────────────────────────
   const head = (
     <Head>
-      <title>CinéMarathon</title>
+      <title>Cinémarathon — Organisez vos marathons de films entre amis</title>
       <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta
+        name="description"
+        content="Créez votre salle, ajoutez vos films, votez pour la prochaine séance, suivez votre progression et débattez entre amis. Le site qui transforme vos soirées en vrais marathons ciné."
+      />
+      {/* Aperçus Google / Discord / WhatsApp */}
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Cinémarathon" />
+      <meta property="og:title" content="Cinémarathon — Le marathon entre amis" />
+      <meta
+        property="og:description"
+        content="Listes de films, votes de séance, progression, notes, discussions : organisez vos marathons et vos soirées ciné entre amis."
+      />
+      <meta property="og:image" content="/og.png" />
+      <meta name="twitter:card" content="summary_large_image" />
     </Head>
   )
 
+  // Avant le montage client (= ce que Google indexe côté serveur) :
+  // on rend la présentation publique, pas un écran vide.
   if (!mounted) return (
     <>
       {head}
-      <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />
+      <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+        <SeoLanding />
+      </div>
     </>
   )
 
@@ -412,6 +431,7 @@ export default function App() {
     <>
       {head}
       <AuthScreen onAuthed={onAuthed} />
+      <SeoLanding />
     </>
   )
 

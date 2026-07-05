@@ -1,8 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#080808"/>
-  <path d="M14 20h36v30H14z" fill="#d6b64c"/>
-  <path d="M14 20h36v8H14z" fill="#f3d675"/>
-  <path d="M18 20l6 8h7l-6-8zm16 0l6 8h7l-6-8z" fill="#080808"/>
-  <path d="M23 36h18v5H23z" fill="#080808"/>
-  <path d="M28 31l11 7-11 7z" fill="#080808"/>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F3D675"/>
+      <stop offset="0.55" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#8B6914"/>
+    </linearGradient>
+    <linearGradient id="goldTop" x1="0" y1="0" x2="1" y2="0.4">
+      <stop offset="0" stop-color="#F7E39A"/>
+      <stop offset="1" stop-color="#D9B855"/>
+    </linearGradient>
+    <clipPath id="stickClip">
+      <rect x="13" y="17" width="38" height="9" rx="2.5"/>
+    </clipPath>
+  </defs>
+
+  <!-- Fond -->
+  <rect width="64" height="64" rx="14" fill="#0A0A0A"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="#C9A84C" stroke-opacity="0.25" stroke-width="1.5"/>
+
+  <!-- Baguette du clap (ouverte, pivotée autour de la charnière) -->
+  <g transform="rotate(-12 15 27)">
+    <rect x="13" y="17" width="38" height="9" rx="2.5" fill="url(#goldTop)"/>
+    <g clip-path="url(#stickClip)" fill="#0A0A0A">
+      <path d="M18 17l7 9h6l-7-9z"/>
+      <path d="M31 17l7 9h6l-7-9z"/>
+      <path d="M44 17l7 9h6l-7-9z"/>
+    </g>
+  </g>
+
+  <!-- Corps du clap -->
+  <rect x="13" y="27" width="38" height="26" rx="3.5" fill="url(#gold)"/>
+  <!-- Liseré supérieur -->
+  <rect x="13" y="27" width="38" height="3" fill="#F7E39A"/>
+
+  <!-- Charnière -->
+  <circle cx="16.5" cy="29.5" r="2.2" fill="#0A0A0A"/>
+  <circle cx="16.5" cy="29.5" r="1" fill="#C9A84C"/>
+
+  <!-- Play centré -->
+  <path d="M27.5 34.5 L40.5 40 L27.5 45.5 Z" fill="#0A0A0A" stroke="#0A0A0A" stroke-width="2.5" stroke-linejoin="round"/>
 </svg>
