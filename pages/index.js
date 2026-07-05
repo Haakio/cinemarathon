@@ -418,14 +418,16 @@ export default function App() {
     </Head>
   )
 
-  // Avant le montage client (= ce que Google indexe côté serveur) :
-  // on rend la présentation publique, pas un écran vide.
+  // Avant le montage client : splash plein écran (ce que l'utilisateur voit
+  // ~1s), avec la présentation publique SOUS la ligne de flottaison — elle
+  // reste dans le HTML pour Google sans flasher à l'écran.
   if (!mounted) return (
     <>
       {head}
-      <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-        <SeoLanding />
+      <div className="boot-splash">
+        <div className="boot-splash-logo">CINÉMARATHON</div>
       </div>
+      <SeoLanding />
     </>
   )
 

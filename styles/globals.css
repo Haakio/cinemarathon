@@ -1464,6 +1464,24 @@ html {
 .jimmy-result b { color: var(--gold); }
 
 /* ════════════════════════════════════════════════════════
+   SPLASH de démarrage (le temps que l'app se charge)
+   ════════════════════════════════════════════════════════ */
+@keyframes splashPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.boot-splash {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+.boot-splash-logo {
+  font-family: var(--font-display); font-size: 34px; font-weight: 900; letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dark));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  animation: splashPulse 1.6s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════
    SEO — landing publique + page ordre Marvel
    ════════════════════════════════════════════════════════ */
 .seo-landing {
