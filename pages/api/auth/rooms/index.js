@@ -3,7 +3,7 @@ import {
   addRoomMember, createRoom, createRoomInvite, deleteRoom, deleteRoomInvite,
   getFriendship, getPublicRooms, getRoomById, getRoomByInviteToken, getRoomByName,
   getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess,
-  removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomImage,
+  removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomImage, updateRoomName,
 } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
@@ -232,7 +232,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { roomId, code, image } = req.body || {}
+    const { roomId, code, image, name } = req.body || {}
     if (!roomId) return res.status(400).json({ error: 'Room requise' })
 
     try {
@@ -242,6 +242,16 @@ export default async function handler(req, res) {
       const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
       const canUpdate = room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo)
       if (!canUpdate) return res.status(403).json({ error: 'Seul le createur peut modifier la room' })
+
+      // Renommage de la room
+      if (name !== undefined) {
+        const cleanName = String(name || '').trim()
+        if (cleanName.length < 2 || cleanName.length > 40) {
+          return res.status(400).json({ error: 'Nom invalide (2 à 40 caractères)' })
+        }
+        await updateRoomName(roomId, cleanName)
+        return res.status(200).json({ ok: true, name: cleanName })
+      }
 
       // Image de la room (autorisée aussi pour Marvel, par l'admin du site)
       if (image !== undefined) {

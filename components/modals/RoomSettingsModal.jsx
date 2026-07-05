@@ -7,6 +7,7 @@ import Modal from './Modal'
  */
 export default function RoomSettingsModal({
   currentRoom, onClose,
+  manageName, setManageName, onSaveName,
   manageImage, setManageImage, onSaveImage,
   manageCode, setManageCode, onSaveCode,
   roomMembers, onKickMember,
@@ -21,6 +22,13 @@ export default function RoomSettingsModal({
         <h2 className="display" style={{ fontSize: '24px', margin: '6px 0 18px' }}>
           Gérer {currentRoom.name}
         </h2>
+
+        <h4 className="profile-section-title">Nom de la room</h4>
+        <div className="room-code-row">
+          <input value={manageName} onChange={e => setManageName(e.target.value)}
+            placeholder="Nom de la room" maxLength={40} onKeyDown={e => e.key === 'Enter' && onSaveName()} />
+          <button onClick={onSaveName}>Renommer</button>
+        </div>
 
         <h4 className="profile-section-title">Photo de la room</h4>
         <div className="room-code-row">

@@ -84,6 +84,7 @@ export default function App() {
   const [roomJoinCode, setRoomJoinCode] = useState('')
   const [roomManageCode, setRoomManageCode] = useState('')
   const [roomManageImage, setRoomManageImage] = useState('')
+  const [roomManageName, setRoomManageName] = useState('')
 
   const pageVisible = usePageVisible()
   const idle = useIdle(60000)
@@ -363,10 +364,24 @@ export default function App() {
     } catch (e) { showToast(e.message || 'Impossible de quitter la room.') }
   }
 
-  // Pré-remplit le champ image avec celle de la room courante
+  // Pré-remplit nom et image avec ceux de la room courante
   useEffect(() => {
-    if (roomSettingsOpen) setRoomManageImage(currentRoom.image || '')
+    if (roomSettingsOpen) {
+      setRoomManageImage(currentRoom.image || '')
+      setRoomManageName(currentRoom.name || '')
+    }
   }, [roomSettingsOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function saveCurrentRoomName() {
+    const name = roomManageName.trim()
+    if (name.length < 2) { setRoomMsg('Nom trop court (min 2 caractères).'); return }
+    try {
+      await api('PATCH', '/auth/rooms', { roomId: currentRoomId, name })
+      setRooms(prev => prev.map(room => room.id === currentRoomId ? { ...room, name } : room))
+      setRoomMsg('')
+      showToast('Room renommée ✓')
+    } catch (e) { setRoomMsg(e.message) }
+  }
 
   // Droits sur les réglages de room : créateur, ou admin du site pour Marvel
   const canManageRoomSettings = canDeleteCurrentRoom || (currentRoom.id === 'marvel' && isAdmin)
@@ -659,6 +674,8 @@ export default function App() {
         <RoomSettingsModal
           currentRoom={currentRoom}
           onClose={() => setRoomSettingsOpen(false)}
+          manageName={roomManageName} setManageName={setRoomManageName}
+          onSaveName={saveCurrentRoomName}
           manageImage={roomManageImage} setManageImage={setRoomManageImage}
           onSaveImage={saveCurrentRoomImage}
           manageCode={roomManageCode} setManageCode={setRoomManageCode}
