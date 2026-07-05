@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs'
 import {
   addRoomMember, createRoom, createRoomInvite, deleteRoom, deleteRoomInvite,
   getFriendship, getPublicRooms, getRoomById, getRoomByInviteToken, getRoomByName,
-  getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess,
-  removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomImage, updateRoomName,
+  getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess, hasRoomManageAccess,
+  removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomGoal, updateRoomImage, updateRoomName,
 } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
@@ -232,7 +232,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { roomId, code, image, name } = req.body || {}
+    const { roomId, code, image, name, goal } = req.body || {}
     if (!roomId) return res.status(400).json({ error: 'Room requise' })
 
     try {
@@ -240,6 +240,27 @@ export default async function handler(req, res) {
       if (!room) return res.status(404).json({ error: 'Room introuvable' })
 
       const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
+
+      // Objectif du marathon : accessible aux admins de room (pas seulement
+      // le créateur). goal:null = suppression.
+      if (goal !== undefined) {
+        const canManageGoal = room.created_by === user.id
+          || (adminPseudo && user.pseudo === adminPseudo)
+          || await hasRoomManageAccess(roomId, user.id)
+        if (!canManageGoal) return res.status(403).json({ error: 'Réservé aux admins de la room' })
+
+        if (goal === null) {
+          await updateRoomGoal(roomId, '', '')
+          return res.status(200).json({ ok: true })
+        }
+        const label = String(goal.label || '').trim().slice(0, 60)
+        const date = String(goal.date || '').trim()
+        if (label.length < 2) return res.status(400).json({ error: 'Nom d\'objectif trop court' })
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Date invalide' })
+        await updateRoomGoal(roomId, label, date)
+        return res.status(200).json({ ok: true })
+      }
+
       const canUpdate = room.created_by === user.id || (adminPseudo && user.pseudo === adminPseudo)
       if (!canUpdate) return res.status(403).json({ error: 'Seul le createur peut modifier la room' })
 

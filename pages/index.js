@@ -44,8 +44,8 @@ import Toast from '../components/widgets/Toast'
 import PopupStack from '../components/widgets/PopupStack'
 
 // Utils
-import { api, clearSession, getStoredGoal, getStoredUser, getToken, saveSession, saveStoredGoal } from '../utils/api'
-import { getDefaultGoal, VIEWS } from '../utils/constants'
+import { api, clearSession, getStoredUser, getToken, saveSession } from '../utils/api'
+import { VIEWS } from '../utils/constants'
 
 /**
  * Orchestrateur de l'application.
@@ -180,18 +180,22 @@ export default function App() {
     if (view === VIEWS.ADMIN && !canManageCurrentRoom) setView(VIEWS.LISTE)
   }, [view, canManageCurrentRoom])
 
-  // ── Objectif du marathon (localStorage par room) ────────
-  const [goal, setGoal] = useState(getDefaultGoal())
-  useEffect(() => {
-    if (!mounted) return
-    setGoal(getStoredGoal(currentRoomId) || getDefaultGoal())
-  }, [mounted, currentRoomId])
+  // ── Objectif du marathon (partagé, stocké en base par room) ──
+  const goal = currentRoom.goal_label && currentRoom.goal_date
+    ? { label: currentRoom.goal_label, date: currentRoom.goal_date }
+    : null
 
-  const saveGoal = useCallback(next => {
-    setGoal(next)
-    saveStoredGoal(currentRoomId, next)
-    showToast('Objectif mis à jour 🎯')
-  }, [currentRoomId, showToast])
+  const saveGoal = useCallback(async next => {
+    try {
+      await api('PATCH', '/auth/rooms', { roomId: currentRoomId, goal: next })
+      setRooms(prev => prev.map(room => room.id === currentRoomId
+        ? { ...room, goal_label: next?.label || '', goal_date: next?.date || '' }
+        : room))
+      showToast(next ? 'Objectif défini 🎯' : 'Objectif supprimé.')
+    } catch (e) { showToast(e.message) }
+  }, [currentRoomId, showToast, setRooms])
+
+  const deleteGoal = useCallback(() => saveGoal(null), [saveGoal])
 
   // ── Actions ─────────────────────────────────────────────
   function onAuthed(token, user) {
@@ -512,6 +516,8 @@ export default function App() {
                 roomMembers={roomMembers}
                 goal={goal}
                 onSaveGoal={saveGoal}
+                onDeleteGoal={deleteGoal}
+                canManageGoal={canManageCurrentRoom}
                 onWatch={goWatch}
                 onOpenDetails={openDetails}
                 avatarMap={social.avatarMap}

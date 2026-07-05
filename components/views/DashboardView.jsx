@@ -14,7 +14,7 @@ import { buildActivity, buildMembers, getNextItem, getProgress } from '../../uti
  */
 export default function DashboardView({
   currentRoom, currentUser, watchlist, watched, seenSource, availability, chatMessages, roomMembers,
-  goal, onSaveGoal, onWatch, onOpenDetails, avatarMap, voteApi, onInvite,
+  goal, onSaveGoal, onDeleteGoal, canManageGoal, onWatch, onOpenDetails, avatarMap, voteApi, onInvite,
 }) {
   // seenSource = watched complet en room privée, ou seulement MES visionnages
   // en room publique (progression personnelle). Les membres/activité gardent
@@ -56,7 +56,17 @@ export default function DashboardView({
           <HeroCard room={currentRoom} progress={progress} memberCount={members.length} watchlist={watchlist} onInvite={onInvite} />
           <ProgressCard progress={progress} />
           <NextUpCard item={nextItem} onStart={onWatch} onOpenDetails={onOpenDetails} />
-          <GoalCard goal={goal} progress={progress} onSaveGoal={onSaveGoal} />
+          {/* Objectif : visible par tous s'il existe ; sinon seuls les admins
+              voient la carte de création */}
+          {(goal || canManageGoal) && (
+            <GoalCard
+              goal={goal}
+              progress={progress}
+              canManage={canManageGoal}
+              onSaveGoal={onSaveGoal}
+              onDeleteGoal={onDeleteGoal}
+            />
+          )}
         </div>
         <div className="dash-side">
           <ActivityFeed activity={activity} />
