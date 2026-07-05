@@ -413,6 +413,8 @@ export default function App() {
       />
       <meta property="og:image" content="/og.png" />
       <meta name="twitter:card" content="summary_large_image" />
+      {/* Adresse officielle : évite que le domaine vercel.app soit indexé à la place */}
+      <link rel="canonical" href="https://xn--cinmarathon-dbb.com/" />
     </Head>
   )
 

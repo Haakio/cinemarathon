@@ -97,6 +97,7 @@ export default function OrdreMarvel() {
         />
         <meta property="og:title" content="Ordre chronologique des films Marvel (MCU)" />
         <meta property="og:description" content="La liste complète pour votre marathon Marvel : ordre chronologique et ordre de sortie." />
+        <link rel="canonical" href="https://xn--cinmarathon-dbb.com/ordre-marvel" />
       </Head>
 
       <main className="seo-page">
