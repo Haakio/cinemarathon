@@ -11,7 +11,7 @@ export default function NextUpCard({ item, onStart, onOpenDetails }) {
     return (
       <section className="card next-card anim-up-3">
         <div className="next-body">
-          <span className="kicker">Prochain film</span>
+          <span className="kicker">Prochaine séance</span>
           <h3>Marathon terminé 🎉</h3>
           <p className="next-synopsis">Tous les titres de la liste ont été vus. Ajoutez-en de nouveaux ou lancez un autre marathon !</p>
         </div>
@@ -20,6 +20,8 @@ export default function NextUpCard({ item, onStart, onOpenDetails }) {
   }
 
   const meta = TYPE_META[item.type] || TYPE_META.film
+  // "Prochain film" / "Prochaine série" / "Prochain anime" selon le type
+  const kicker = item.type === 'serie' ? 'Prochaine série' : `Prochain ${meta.label.toLowerCase()}`
 
   return (
     <section className="card next-card anim-up-3">
@@ -27,7 +29,7 @@ export default function NextUpCard({ item, onStart, onOpenDetails }) {
         ? <img className="next-poster" src={item.poster} alt={item.title} onError={e => { e.target.style.display = 'none' }} />
         : <div className="next-poster-ph">{meta.icon}</div>}
       <div className="next-body">
-        <span className="kicker">Prochain film</span>
+        <span className="kicker">{kicker}</span>
         <h3>{item.title}{item.year ? ` (${item.year})` : ''}</h3>
         {item.synopsis
           ? <p className="next-synopsis">{truncate(item.synopsis, 190)}</p>
