@@ -7,6 +7,7 @@ import Icon from '../widgets/Icon'
  */
 export default function RoomBar({
   currentRoom, onOpenHub,
+  canManageCurrentRoom, onOpenSettings,
   canDeleteCurrentRoom, onDeleteRoom, onLeaveRoom,
   roomMsg,
 }) {
@@ -24,6 +25,12 @@ export default function RoomBar({
         </div>
       </div>
       <div className="room-actions">
+        {canManageCurrentRoom && (
+          <button className="room-leave-btn" onClick={onOpenSettings} title="Réglages de la room" style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <Icon name="gear" size={14} />
+            Gérer
+          </button>
+        )}
         {canDeleteCurrentRoom && (
           <button className="room-delete-btn" onClick={onDeleteRoom}>Supprimer</button>
         )}

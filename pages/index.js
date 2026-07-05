@@ -31,6 +31,7 @@ import VoteView from '../components/views/VoteView'
 // Modals & widgets
 import MovieModal from '../components/modals/MovieModal'
 import RoomModal from '../components/modals/RoomModal'
+import RoomSettingsModal from '../components/modals/RoomSettingsModal'
 import RoomsHubModal from '../components/modals/RoomsHubModal'
 import InviteModal from '../components/modals/InviteModal'
 import WelcomeModal from '../components/modals/WelcomeModal'
@@ -70,6 +71,7 @@ export default function App() {
 
   // ── Room panel (modal) ──────────────────────────────────
   const [roomsHubOpen, setRoomsHubOpen] = useState(false)
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
@@ -122,7 +124,7 @@ export default function App() {
   // ── Données marathon (source de vérité unique) ──────────
   const marathon = useMarathon({
     authed, currentUser, view, pageVisible: isActive,
-    membersWanted: roomPanelOpen || view === VIEWS.ADMIN || view === VIEWS.OVERVIEW,
+    membersWanted: roomPanelOpen || roomSettingsOpen || view === VIEWS.ADMIN || view === VIEWS.OVERVIEW,
   })
   const {
     rooms, setRooms, currentRoomId, selectRoom, currentRoom,
@@ -363,8 +365,11 @@ export default function App() {
 
   // Pré-remplit le champ image avec celle de la room courante
   useEffect(() => {
-    if (roomPanelOpen) setRoomManageImage(currentRoom.image || '')
-  }, [roomPanelOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (roomSettingsOpen) setRoomManageImage(currentRoom.image || '')
+  }, [roomSettingsOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Droits sur les réglages de room : créateur, ou admin du site pour Marvel
+  const canManageRoomSettings = canDeleteCurrentRoom || (currentRoom.id === 'marvel' && isAdmin)
 
   async function saveCurrentRoomImage() {
     try {
@@ -459,10 +464,12 @@ export default function App() {
         <RoomBar
           currentRoom={currentRoom}
           onOpenHub={() => setRoomsHubOpen(true)}
+          canManageCurrentRoom={canManageRoomSettings}
+          onOpenSettings={() => { setRoomMsg(''); setRoomSettingsOpen(true) }}
           canDeleteCurrentRoom={canDeleteCurrentRoom}
           onDeleteRoom={deleteCurrentRoom}
           onLeaveRoom={leaveCurrentRoom}
-          roomMsg={!roomPanelOpen ? roomMsg : ''}
+          roomMsg={!roomPanelOpen && !roomSettingsOpen ? roomMsg : ''}
         />
 
         <div className="shell-body">
@@ -645,12 +652,17 @@ export default function App() {
           isGlobalAdmin={isAdmin}
           newIsPublic={newRoomPublic} setNewIsPublic={setNewRoomPublic}
           onCreate={createNewRoom}
-          canDeleteCurrentRoom={canDeleteCurrentRoom}
+          roomMsg={roomMsg}
+        />
+      )}
+      {roomSettingsOpen && (
+        <RoomSettingsModal
           currentRoom={currentRoom}
-          manageCode={roomManageCode} setManageCode={setRoomManageCode}
-          onSaveCode={saveCurrentRoomCode}
+          onClose={() => setRoomSettingsOpen(false)}
           manageImage={roomManageImage} setManageImage={setRoomManageImage}
           onSaveImage={saveCurrentRoomImage}
+          manageCode={roomManageCode} setManageCode={setRoomManageCode}
+          onSaveCode={saveCurrentRoomCode}
           roomMembers={roomMembers}
           onKickMember={kickRoomMember}
           roomMsg={roomMsg}
