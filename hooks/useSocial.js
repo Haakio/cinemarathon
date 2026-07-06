@@ -22,7 +22,9 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
   const [outgoing, setOutgoing] = useState([])
   const [avatarMap, setAvatarMap] = useState({})
   const [roomInvites, setRoomInvites] = useState([])
+  const [modCases, setModCases] = useState([]) // dossiers de modération (admin site)
   const [notifSeenAt, setNotifSeenAt] = useState(null)
+  const isSiteAdmin = Boolean(currentUser?.pseudo) && currentUser.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   // Instantané précédent pour détecter les nouveautés (popups)
   const prevSnapshotRef = useRef(null)
 
@@ -87,6 +89,29 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
         map[(a.pseudo || '').toLowerCase()] = a
       })
       setAvatarMap(map)
+
+      // Admin du site : dossiers de modération, avec ALERTE URGENTE
+      // si un nouveau blocage est apparu depuis le dernier chargement.
+      if (isSiteAdmin) {
+        try {
+          const mod = await api('GET', '/auth/moderation')
+          const cases = mod.cases || []
+          const prevIds = prevSnapshotRef.current?.modIds
+          if (prevIds && onNotify) {
+            cases
+              .filter(c => !c.banned && !prevIds.has(c.userId))
+              .forEach(c => onNotify({
+                icon: '⛔',
+                title: 'MODÉRATION — URGENT',
+                text: `${c.pseudo} bloqué : « ${c.term} » (${c.context})`,
+                tab: 'notifications',
+                urgent: true,
+              }))
+          }
+          prevSnapshotRef.current = { ...(prevSnapshotRef.current || {}), modIds: new Set(cases.map(c => c.userId)) }
+          setModCases(cases)
+        } catch { }
+      }
     } catch (err) {
       // Session fantôme : le token est encore signé mais le compte n'existe
       // plus (supprimé) → déconnexion forcée.
@@ -181,8 +206,23 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
     return patchnoteHistory.filter(entry => entry.date > notifSeenAt.slice(0, 10)).length
   }, [notifSeenAt])
 
-  // Demandes d'amis + invitations de room comptent tant que non traitées
-  const unreadCount = unreadPatchnotes + incoming.length + roomInvites.length
+  // Actions de modération (admin site) : débloquer / bannir / débannir
+  const moderateCase = useCallback(async (action, userId, banIp = false) => {
+    try {
+      await api('POST', '/auth/moderation', { action, userId, banIp })
+      setModCases(prev => action === 'ban'
+        ? prev.map(c => c.userId === userId ? { ...c, banned: true } : c)
+        : prev.filter(c => c.userId !== userId))
+      return true
+    } catch (e) {
+      onError?.(e.message)
+      return false
+    }
+  }, [onError])
+
+  // Demandes d'amis + invitations + dossiers de modération en attente
+  const pendingModCount = modCases.filter(c => !c.banned).length
+  const unreadCount = unreadPatchnotes + incoming.length + roomInvites.length + pendingModCount
 
   const removeRoomInvite = useCallback(roomId => {
     setRoomInvites(prev => prev.filter(invite => invite.roomId !== roomId))
@@ -197,6 +237,7 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
 
   return {
     profile, friends, incoming, outgoing, avatarMap, roomInvites, removeRoomInvite,
+    modCases, moderateCase,
     updateAvatar, sendFriendRequest, acceptFriend, declineFriend, removeFriend, searchMembers,
     unreadCount, unreadPatchnotes, notifSeenAt, markNotificationsSeen,
     reload: loadSocial,

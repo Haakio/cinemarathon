@@ -8,7 +8,7 @@ export default function PopupStack({ popups, onOpen, onDismiss }) {
   return (
     <div className="popup-stack">
       {popups.map(popup => (
-        <div key={popup.id} className="popup-notif" onClick={() => onOpen?.(popup)}>
+        <div key={popup.id} className={`popup-notif ${popup.urgent ? 'urgent' : ''}`} onClick={() => onOpen?.(popup)}>
           <span className="popup-icon">{popup.icon}</span>
           <div className="popup-body">
             <b>{popup.title}</b>

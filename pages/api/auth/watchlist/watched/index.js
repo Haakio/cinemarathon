@@ -1,5 +1,6 @@
 import { getWatched, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
+import { moderateOrBlock, rejectIfSuspended } from '../../../../../lib/guard'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
 
@@ -24,6 +25,9 @@ export default async function handler(req, res) {
     if (!itemId || !rating) return res.status(400).json({ error: 'itemId et rating requis' })
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+      // Modération du commentaire d'avis
+      if (await rejectIfSuspended(res, user)) return
+      if (comment && await moderateOrBlock(res, user, [comment], 'avis')) return
       const entry = {
         id: uid(),
         roomId,

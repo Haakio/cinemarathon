@@ -12,6 +12,8 @@ export default async function handler(req, res) {
     if (!user) return res.status(401).json({ error: 'Pseudo ou mot de passe incorrect' })
     const valid = await bcrypt.compare(password, user.password)
     if (!valid) return res.status(401).json({ error: 'Pseudo ou mot de passe incorrect' })
+    // Compte banni : connexion refusée
+    if (user.banned) return res.status(403).json({ error: 'Ce compte a été banni.' })
     const token = signToken({ id: user.id, pseudo: user.pseudo })
     return res.status(200).json({ token, user: { id: user.id, pseudo: user.pseudo } })
   } catch (err) {

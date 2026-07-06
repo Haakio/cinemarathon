@@ -71,6 +71,10 @@ export async function api(method, path, body) {
   })
   const data = await res.json()
   if (!res.ok) {
+    // 451 = compte suspendu par la modération → l'app affiche l'écran bloqué
+    if (res.status === 451 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('cm-blocked'))
+    }
     const error = new Error(data.error || 'Erreur')
     error.status = res.status // permet de détecter les sessions fantômes (404 profil)
     throw error

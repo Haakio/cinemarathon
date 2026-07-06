@@ -8,40 +8,7 @@ import { buildBadgeContext, computeBadges } from '../../lib/badges'
 import { formatDate, formatRelative, pseudoHue } from '../../utils/format'
 import { patchnoteHistory } from '../../lib/patchnotes'
 
-/** Lit un fichier en data URL (pour les GIF, conservés tels quels). */
-function readAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-/**
- * Redimensionne une image en carré (cover) côté navigateur.
- * Résultat : data URL webp ~10-15 Ko, stockable en base sans service externe.
- */
-function downscaleImage(file, size = 128) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const objectUrl = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      const canvas = document.createElement('canvas')
-      canvas.width = size
-      canvas.height = size
-      const ctx = canvas.getContext('2d')
-      const scale = Math.max(size / img.width, size / img.height)
-      const w = img.width * scale
-      const h = img.height * scale
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
-      resolve(canvas.toDataURL('image/webp', 0.85))
-    }
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image illisible')) }
-    img.src = objectUrl
-  })
-}
+import { readAsDataURL, downscaleSquare } from '../../utils/image'
 
 /**
  * Espace personnel : Profil (avatar + badges), Amis (recherche/demandes),
@@ -161,7 +128,7 @@ export default function ProfileModal({
       return
     }
     try {
-      const dataUrl = await downscaleImage(file, 128)
+      const dataUrl = await downscaleSquare(file, 128)
       if (dataUrl.length > 200000) {
         setUploadError('Image trop lourde après compression, essayez-en une autre.')
         return
@@ -374,6 +341,46 @@ export default function ProfileModal({
         {/* ── NOTIFICATIONS ── */}
         {tab === 'notifications' && (
           <div>
+            {isGlobalAdmin && social.modCases?.length > 0 && (
+              <>
+                <h4 className="profile-section-title" style={{ color: 'var(--red)' }}>⛔ Modération</h4>
+                {social.modCases.map(modCase => (
+                  <div className="mod-case" key={modCase.userId}>
+                    <div className="mod-case-head">
+                      <b>{modCase.pseudo}</b>
+                      <span className={`chip ${modCase.banned ? '' : 'mod-pending'}`}>
+                        {modCase.banned ? 'Banni' : 'En attente de verdict'}
+                      </span>
+                    </div>
+                    <div className="mod-case-detail">
+                      Terme détecté : <b>« {modCase.term} »</b> — dans : {modCase.context || '?'}
+                      {modCase.blockedAt ? ` · ${formatRelative(modCase.blockedAt)}` : ''}
+                    </div>
+                    {modCase.text && <div className="mod-case-text">« {modCase.text} »</div>}
+                    <div className="mod-case-actions">
+                      {modCase.banned ? (
+                        <button className="friend-accept" onClick={() => social.moderateCase('unban', modCase.userId)}>
+                          Débannir
+                        </button>
+                      ) : (
+                        <>
+                          <button className="friend-accept" onClick={() => social.moderateCase('unblock', modCase.userId)}>
+                            Débloquer (contexte OK)
+                          </button>
+                          <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId)}>
+                            Bannir
+                          </button>
+                          <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId, true)}>
+                            Bannir + IP
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
             {social.roomInvites?.length > 0 && (
               <>
                 <h4 className="profile-section-title">Invitations de room</h4>

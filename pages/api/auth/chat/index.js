@@ -1,5 +1,6 @@
 import { createChatMessage, getChatMessages, hasRoomAccess } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
+import { moderateOrBlock, rejectIfSuspended } from '../../../../lib/guard'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
 
@@ -27,6 +28,9 @@ export default async function handler(req, res) {
 
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+      // Modération : compte suspendu → refus ; propos haineux → blocage
+      if (await rejectIfSuspended(res, user)) return
+      if (await moderateOrBlock(res, user, [text], 'chat')) return
       const chatMessage = {
         id: uid(),
         roomId,

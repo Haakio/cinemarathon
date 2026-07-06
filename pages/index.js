@@ -164,6 +164,16 @@ export default function App() {
     if (user && token) { setCurrentUser(user); setAuthed(true) }
   }, [])
 
+  // Compte suspendu par la modération : écran bloquant immédiat
+  // (déclenché par une réponse 451, confirmé par le profil serveur)
+  const [justBlocked, setJustBlocked] = useState(false)
+  useEffect(() => {
+    const handler = () => setJustBlocked(true)
+    window.addEventListener('cm-blocked', handler)
+    return () => window.removeEventListener('cm-blocked', handler)
+  }, [])
+  const isSuspended = authed && (justBlocked || social.profile?.blocked || social.profile?.banned)
+
   // Mot de bienvenue du créateur : une seule fois, à la première connexion
   useEffect(() => {
     if (!authed || !currentUser?.id) return
@@ -460,6 +470,27 @@ export default function App() {
       {head}
       <AuthScreen onAuthed={onAuthed} />
       <SeoLanding />
+    </>
+  )
+
+  // Écran de suspension : rien d'autre n'est accessible
+  if (isSuspended) return (
+    <>
+      {head}
+      <div className="blocked-screen">
+        <div className="blocked-box">
+          <div className="blocked-icon">⛔</div>
+          <h1>{social.profile?.banned ? 'Compte banni' : 'Compte suspendu'}</h1>
+          <p>
+            {social.profile?.banned
+              ? 'Votre compte a été banni de Cinémarathon suite à des propos interdits.'
+              : 'Un de vos messages a enfreint les règles (propos haineux). Il n\'a pas été publié et votre compte est suspendu le temps que l\'administrateur examine la situation.'}
+          </p>
+          <button className="btn-ghost" style={{ width: 'auto' }} onClick={() => { setJustBlocked(false); logout() }}>
+            Se déconnecter
+          </button>
+        </div>
+      </div>
     </>
   )
 

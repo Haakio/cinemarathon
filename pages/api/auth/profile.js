@@ -27,6 +27,8 @@ export default async function handler(req, res) {
         avatarEmoji: me.avatar_emoji || '',
         avatarHue: me.avatar_hue ?? null,
         avatarUrl: me.avatar_url || '',
+        blocked: Boolean(me.blocked_at),
+        banned: Boolean(me.banned),
       })
     }
 

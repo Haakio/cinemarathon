@@ -6,6 +6,7 @@ import {
   removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomGoal, updateRoomImage, updateRoomName,
 } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
+import { getClientIp, moderateOrBlock } from '../../../../lib/guard'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
 
@@ -37,8 +38,9 @@ export default async function handler(req, res) {
         return res.status(200).json(members)
       }
 
-      // Heartbeat de présence, greffé sur le poll existant (aucun appel en plus)
-      try { await touchUserLastSeen(user.id) } catch { }
+      // Heartbeat de présence + capture d'IP (pour le ban IP éventuel),
+      // greffé sur le poll existant (aucun appel en plus)
+      try { await touchUserLastSeen(user.id, getClientIp(req)) } catch { }
 
       const rooms = await getRooms(user.id)
       return res.status(200).json(rooms)
@@ -189,6 +191,7 @@ export default async function handler(req, res) {
       }
 
       if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+      if (await moderateOrBlock(res, user, [name], 'nom de room')) return
       if (!isPublic && (!code?.trim() || code.trim().length < 3)) {
         return res.status(400).json({ error: 'Code requis (min 3 caracteres)' })
       }

@@ -150,10 +150,22 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS tag_label TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS tag_color TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason TEXT DEFAULT ''`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned INTEGER DEFAULT 0`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT DEFAULT ''`
+    await sql`
+      CREATE TABLE IF NOT EXISTS banned_ips (
+        ip TEXT PRIMARY KEY,
+        pseudo TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS invite_token TEXT`
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image TEXT DEFAULT ''`
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS goal_label TEXT DEFAULT ''`
     await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS goal_date TEXT DEFAULT ''`
+    await sql`ALTER TABLE film_posts ADD COLUMN IF NOT EXISTS image TEXT DEFAULT ''`
     await sql`
       CREATE TABLE IF NOT EXISTS room_invites (
         room_id TEXT NOT NULL,

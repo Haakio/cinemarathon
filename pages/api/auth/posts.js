@@ -1,5 +1,6 @@
 import { createFilmPost, deleteFilmPost, getFilmPost, getFilmPosts, hasRoomAccess } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
+import { moderateOrBlock, rejectIfSuspended } from '../../../lib/guard'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
 
@@ -40,10 +41,22 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { roomId = 'marvel', itemId, parentId, title, body } = req.body
-      if (!body?.trim()) return res.status(400).json({ error: 'Le message est vide' })
-      if (body.length > 3000) return res.status(400).json({ error: 'Message trop long (max 3000)' })
+      const { roomId = 'marvel', itemId, parentId, title, body, image } = req.body
+      if (!body?.trim() && !image) return res.status(400).json({ error: 'Le message est vide' })
+      if (body && body.length > 3000) return res.status(400).json({ error: 'Message trop long (max 3000)' })
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+
+      // Image jointe : URL https (GIF Tenor...) ou upload compressé en base64
+      const img = String(image || '').trim()
+      const isHttpsImg = /^https:\/\//i.test(img) && img.length <= 500
+      const isDataImg = /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(img) && img.length <= 250000
+      if (img && !isHttpsImg && !isDataImg) {
+        return res.status(400).json({ error: 'Image invalide (lien https ou fichier trop lourd)' })
+      }
+
+      // Modération : compte suspendu → refus ; propos haineux → blocage
+      if (await rejectIfSuspended(res, user)) return
+      if (await moderateOrBlock(res, user, [title, body], 'discussion')) return
 
       const post = {
         id: uid(),
@@ -53,7 +66,8 @@ export default async function handler(req, res) {
         userId: user.id,
         pseudo: user.pseudo,
         title: (title || '').trim().slice(0, 140),
-        body: body.trim(),
+        body: (body || '').trim(),
+        image: img,
       }
       await createFilmPost(post)
       return res.status(201).json({ ok: true, post })
