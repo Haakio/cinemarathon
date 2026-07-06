@@ -46,23 +46,39 @@ export default function ProfileModal({
   const [tagTip, setTagTip] = useState('')
   const [tagSaving, setTagSaving] = useState(false)
 
-  async function saveTag(remove = false) {
-    if (!tagPseudo.trim()) { showToast?.('Entrez un pseudo.'); return }
+  async function saveTag(remove = false, pseudoOverride = null) {
+    const pseudo = (pseudoOverride || tagPseudo).trim()
+    if (!pseudo) { showToast?.('Entrez un pseudo.'); return }
     setTagSaving(true)
     try {
       await api('POST', '/auth/tag', {
-        pseudo: tagPseudo.trim(),
+        pseudo,
         label: remove ? '' : tagLabel,
         color: tagColor,
         tip: remove ? '' : tagTip,
       })
       showToast?.(remove ? 'Tag retiré.' : 'Tag attribué ✓')
       social.reload() // rafraîchit l'avatarMap → le tag apparaît partout
-      if (remove) { setTagPseudo(''); setTagLabel(''); setTagTip('') }
+      if (!remove || pseudo === tagPseudo.trim()) { setTagPseudo(''); setTagLabel(''); setTagTip('') }
     } catch (e) {
       showToast?.(e.message)
     }
     setTagSaving(false)
+  }
+
+  // Membres actuellement tagués (dérivés de l'avatarMap, dédupliqués)
+  const taggedUsers = useMemo(() => {
+    const seen = new Set()
+    return Object.values(social.avatarMap || {})
+      .filter(entry => entry.tagLabel && entry.userId && !seen.has(entry.userId) && seen.add(entry.userId))
+  }, [social.avatarMap])
+
+  /** Pré-remplit le formulaire pour modifier un tag existant. */
+  function editTag(entry) {
+    setTagPseudo(entry.pseudo || '')
+    setTagLabel(entry.tagLabel || '')
+    setTagColor(entry.tagColor || 'red')
+    setTagTip(entry.tagTip || '')
   }
 
   // Recherche d'amis
@@ -165,7 +181,7 @@ export default function ProfileModal({
             <h2 className="display" style={{ fontSize: '24px' }}>
               {currentUser?.pseudo}
               <UserTag entry={social.avatarMap?.[currentUser?.id]} />
-              <ModBadge entry={social.avatarMap?.[currentUser?.id]} />
+              <ModBadge entry={social.avatarMap?.[currentUser?.id]} pseudo={currentUser?.pseudo} />
             </h2>
             <div className="profile-sub">
               {profile?.createdAt ? `Membre depuis le ${formatDate(profile.createdAt)} · ` : ''}
@@ -471,10 +487,25 @@ export default function ProfileModal({
                   <button className="btn-add" style={{ flex: 1 }} onClick={() => saveTag(false)} disabled={tagSaving || !tagLabel.trim()}>
                     {tagSaving ? '...' : 'Attribuer le tag'}
                   </button>
-                  <button className="btn-ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => saveTag(true)} disabled={tagSaving}>
-                    Retirer
-                  </button>
                 </div>
+
+                {taggedUsers.length > 0 && (
+                  <>
+                    <h4 className="profile-section-title">Tags actuels ({taggedUsers.length})</h4>
+                    {taggedUsers.map(entry => (
+                      <div className="friend-row" key={entry.userId}>
+                        <div className="friend-name">
+                          <b>{entry.pseudo}</b>
+                          <UserTag entry={entry} />
+                        </div>
+                        <div className="friend-actions">
+                          <button className="friend-accept" onClick={() => editTag(entry)}>Modifier</button>
+                          <button className="friend-decline" onClick={() => saveTag(true, entry.pseudo)} disabled={tagSaving}>Retirer</button>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </>
             )}
 

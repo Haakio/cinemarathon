@@ -16,9 +16,16 @@ export default async function handler(req, res) {
   const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
   const isAdmin = Boolean(adminPseudo) && user.pseudo === adminPseudo
 
+  // Staff = admin OU modérateur (épée verte) — les deux peuvent discuter
+  async function isStaff() {
+    if (isAdmin) return true
+    const me = await getUserById(user.id)
+    return Boolean(me?.moderator)
+  }
+
   try {
     if (req.method === 'GET') {
-      if (isAdmin && req.query.userId) {
+      if (req.query.userId && await isStaff()) {
         const messages = await getAppealMessages(String(req.query.userId))
         return res.status(200).json({ messages })
       }
@@ -36,8 +43,8 @@ export default async function handler(req, res) {
       if (!text) return res.status(400).json({ error: 'Message vide' })
       if (text.length > 1000) return res.status(400).json({ error: 'Message trop long (max 1000)' })
 
-      if (isAdmin && userId) {
-        // Réponse de la modération
+      if (userId && await isStaff()) {
+        // Réponse de la modération (admin ou modo)
         await createAppealMessage({ id: uid(), userId: String(userId), fromAdmin: true, pseudo: user.pseudo, message: text })
         return res.status(201).json({ ok: true })
       }

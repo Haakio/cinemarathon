@@ -180,6 +180,9 @@ export default function App() {
     if (user && token) { setCurrentUser(user); setAuthed(true) }
   }, [])
 
+  // Staff = admin du site OU modérateur nommé (épée verte)
+  const isStaff = isAdmin || Boolean(social.profile?.moderator)
+
   // Compte suspendu par la modération : écran bloquant immédiat
   // (déclenché par une réponse 451, confirmé par le profil serveur)
   const [justBlocked, setJustBlocked] = useState(false)
@@ -527,7 +530,7 @@ export default function App() {
           unreadCount={social.unreadCount}
           voteBadge={voteBadge}
           onOpenProfile={() => { setProfileTab('profil'); setProfileOpen(true) }}
-          isSiteAdmin={isAdmin}
+          isSiteAdmin={isStaff}
           onOpenAdminPanel={() => setAdminPanelOpen(true)}
           modBadgeCount={social.pendingModCount}
         />
@@ -553,7 +556,7 @@ export default function App() {
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             voteBadge={voteBadge}
-            isSiteAdmin={isAdmin}
+            isSiteAdmin={isStaff}
             modCount={social.pendingModCount}
           />
 
@@ -664,8 +667,8 @@ export default function App() {
                 avatarMap={social.avatarMap}
               />
             )}
-            {view === VIEWS.MODERATION && isAdmin && (
-              <ModerationView social={social} avatarMap={social.avatarMap} />
+            {view === VIEWS.MODERATION && isStaff && (
+              <ModerationView social={social} avatarMap={social.avatarMap} isAdmin={isAdmin} />
             )}
             {view === VIEWS.ADMIN && canManageCurrentRoom && (
               <AdminView
@@ -782,6 +785,7 @@ export default function App() {
       {adminPanelOpen && (
         <AdminPanelModal
           social={social}
+          isAdmin={isAdmin}
           showToast={showToast}
           askConfirm={askConfirm}
           onGoModeration={() => { setAdminPanelOpen(false); setView(VIEWS.MODERATION) }}

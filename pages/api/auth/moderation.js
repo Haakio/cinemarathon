@@ -2,19 +2,27 @@ import { addBannedIp, banUser, getModerationList, getUser, getUserById, removeBa
 import { requireAuth } from '../../../lib/auth'
 
 /**
- * Pupitre de modération — RÉSERVÉ À L'ADMIN DU SITE.
+ * Pupitre de modération.
+ * ADMIN DU SITE : tout. MODÉRATEURS (épée verte) : consultation + déblocage.
  * GET  → comptes bloqués (en attente de verdict) et bannis
- * POST { action: 'unblock', userId }            → débloquer (contexte OK)
- * POST { action: 'ban', userId, banIp: bool }   → bannir (compte, + IP en option)
- * POST { action: 'unban', userId }              → débannir (compte + IP)
+ * POST { action: 'unblock', userId }            → débloquer (admin + modos)
+ * POST { action: 'ban', userId, banIp: bool }   → bannir (ADMIN uniquement)
+ * POST { action: 'unban', userId }              → débannir (ADMIN uniquement)
+ * POST { action: 'mod'|'unmod', pseudo }        → nommer/révoquer (ADMIN uniquement)
  */
 export default async function handler(req, res) {
   const user = requireAuth(req)
   if (!user) return res.status(401).json({ error: 'Non autorisé' })
 
   const adminPseudo = process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO
-  if (!adminPseudo || user.pseudo !== adminPseudo) {
-    return res.status(403).json({ error: 'Réservé à l\'administrateur du site' })
+  const isAdmin = Boolean(adminPseudo) && user.pseudo === adminPseudo
+  let isModerator = false
+  if (!isAdmin) {
+    const me = await getUserById(user.id)
+    isModerator = Boolean(me?.moderator)
+  }
+  if (!isAdmin && !isModerator) {
+    return res.status(403).json({ error: 'Réservé à la modération du site' })
   }
 
   try {
@@ -43,6 +51,7 @@ export default async function handler(req, res) {
 
       // Nomination / révocation d'un modérateur du site (épée verte)
       if (action === 'mod' || action === 'unmod') {
+        if (!isAdmin) return res.status(403).json({ error: 'Réservé à l\'administrateur du site' })
         if (!pseudo?.trim()) return res.status(400).json({ error: 'Pseudo requis' })
         const target = await getUser(pseudo.trim())
         if (!target) return res.status(404).json({ error: 'Aucun compte avec ce pseudo' })
@@ -55,13 +64,22 @@ export default async function handler(req, res) {
       if (!target) return res.status(404).json({ error: 'Compte introuvable' })
       if (target.id === user.id) return res.status(400).json({ error: 'Impossible sur votre propre compte' })
 
-      if (action === 'unblock' || action === 'unban') {
+      if (action === 'unblock') {
+        // Admin + modos : rendre l'accès après examen du contexte
+        await unblockUser(userId)
+        await removeBannedIpsFor(target.pseudo)
+        return res.status(200).json({ ok: true })
+      }
+
+      if (action === 'unban') {
+        if (!isAdmin) return res.status(403).json({ error: 'Réservé à l\'administrateur du site' })
         await unblockUser(userId)
         await removeBannedIpsFor(target.pseudo)
         return res.status(200).json({ ok: true })
       }
 
       if (action === 'ban') {
+        if (!isAdmin) return res.status(403).json({ error: 'Réservé à l\'administrateur du site' })
         await banUser(userId)
         if (banIp && target.last_ip) {
           await addBannedIp(target.last_ip, target.pseudo)

@@ -8,7 +8,7 @@ import { formatRelative } from '../../utils/format'
  * de la section Gestion). Dossiers en attente de verdict + comptes bannis.
  * Les données viennent de useSocial (déjà chargées, alertes en direct).
  */
-export default function ModerationView({ social, avatarMap }) {
+export default function ModerationView({ social, avatarMap, isAdmin = false }) {
   const pending = social.modCases.filter(c => !c.banned)
   const banned = social.modCases.filter(c => c.banned)
   const [chatOpenId, setChatOpenId] = useState(null) // conversation dépliée
@@ -34,20 +34,30 @@ export default function ModerationView({ social, avatarMap }) {
         {modCase.text && <div className="mod-case-text">« {modCase.text} »</div>}
         <div className="mod-case-actions">
           {modCase.banned ? (
-            <button className="friend-accept" onClick={() => social.moderateCase('unban', modCase.userId)}>
-              Débannir (compte + IP)
-            </button>
+            isAdmin ? (
+              <button className="friend-accept" onClick={() => social.moderateCase('unban', modCase.userId)}>
+                Débannir (compte + IP)
+              </button>
+            ) : (
+              <span className="tmdb-hint" style={{ margin: 0 }}>Débannissement réservé à l'admin</span>
+            )
           ) : (
             <>
               <button className="friend-accept" onClick={() => social.moderateCase('unblock', modCase.userId)}>
                 Débloquer — contexte OK
               </button>
-              <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId)}>
-                Bannir le compte
-              </button>
-              <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId, true)}>
-                Bannir compte + IP
-              </button>
+              {isAdmin ? (
+                <>
+                  <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId)}>
+                    Bannir le compte
+                  </button>
+                  <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId, true)}>
+                    Bannir compte + IP
+                  </button>
+                </>
+              ) : (
+                <span className="tmdb-hint" style={{ margin: 0 }}>Bannissement réservé à l'admin — signalez-lui les cas graves</span>
+              )}
             </>
           )}
           <button

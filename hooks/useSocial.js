@@ -90,9 +90,9 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
       })
       setAvatarMap(map)
 
-      // Admin du site : dossiers de modération, avec ALERTE URGENTE
-      // si un nouveau blocage est apparu depuis le dernier chargement.
-      if (isSiteAdmin) {
+      // Staff (admin + modérateurs) : dossiers de modération, avec ALERTE
+      // URGENTE si un nouveau blocage est apparu depuis le dernier chargement.
+      if (isSiteAdmin || me.moderator) {
         try {
           const mod = await api('GET', '/auth/moderation')
           const cases = mod.cases || []

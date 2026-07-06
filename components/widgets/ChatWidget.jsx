@@ -41,7 +41,7 @@ export default function ChatWidget({ chat, currentRoom, currentUser, avatarMap =
                   return (
                     <div key={msg.id} className={`chat-message ${mine ? 'mine' : ''}`}>
                       <div className="chat-meta">
-                        <span>{msg.pseudo || 'Membre'}<UserTag entry={custom} /><ModBadge entry={custom} /></span>
+                        <span>{msg.pseudo || 'Membre'}<UserTag entry={custom} /><ModBadge entry={custom} pseudo={msg.pseudo} /></span>
                         <small>{formatTime(msg.created_at)}</small>
                       </div>
                       <div className="chat-line">
