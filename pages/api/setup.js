@@ -149,6 +149,7 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS tag_label TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS tag_color TEXT DEFAULT ''`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS tag_tip TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason TEXT DEFAULT ''`

@@ -22,6 +22,7 @@ export default async function handler(req, res) {
         url: row.avatar_url || '',
         tagLabel: row.tag_label || '',
         tagColor: row.tag_color || '',
+        tagTip: row.tag_tip || '',
         moderator: Boolean(row.moderator),
       })),
     })

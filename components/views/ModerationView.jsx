@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import Avatar from '../widgets/Avatar'
+import AppealChat from '../widgets/AppealChat'
 import { formatRelative } from '../../utils/format'
 
 /**
@@ -9,6 +11,7 @@ import { formatRelative } from '../../utils/format'
 export default function ModerationView({ social, avatarMap }) {
   const pending = social.modCases.filter(c => !c.banned)
   const banned = social.modCases.filter(c => c.banned)
+  const [chatOpenId, setChatOpenId] = useState(null) // conversation dépliée
 
   const renderCase = modCase => {
     const custom = avatarMap[modCase.userId] || {}
@@ -47,7 +50,19 @@ export default function ModerationView({ social, avatarMap }) {
               </button>
             </>
           )}
+          <button
+            className="friend-decline"
+            style={{ borderColor: 'var(--border-strong)', color: 'var(--gold)' }}
+            onClick={() => setChatOpenId(chatOpenId === modCase.userId ? null : modCase.userId)}
+          >
+            {chatOpenId === modCase.userId ? 'Fermer la discussion' : '💬 Discuter'}
+          </button>
         </div>
+        {chatOpenId === modCase.userId && (
+          <div style={{ marginTop: '12px' }}>
+            <AppealChat targetUserId={modCase.userId} placeholder={`Répondre à ${modCase.pseudo}...`} />
+          </div>
+        )}
       </div>
     )
   }

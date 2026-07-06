@@ -43,6 +43,7 @@ export default function ProfileModal({
   const [tagPseudo, setTagPseudo] = useState('')
   const [tagLabel, setTagLabel] = useState('')
   const [tagColor, setTagColor] = useState('red')
+  const [tagTip, setTagTip] = useState('')
   const [tagSaving, setTagSaving] = useState(false)
 
   async function saveTag(remove = false) {
@@ -53,10 +54,11 @@ export default function ProfileModal({
         pseudo: tagPseudo.trim(),
         label: remove ? '' : tagLabel,
         color: tagColor,
+        tip: remove ? '' : tagTip,
       })
       showToast?.(remove ? 'Tag retiré.' : 'Tag attribué ✓')
       social.reload() // rafraîchit l'avatarMap → le tag apparaît partout
-      if (remove) { setTagPseudo(''); setTagLabel('') }
+      if (remove) { setTagPseudo(''); setTagLabel(''); setTagTip('') }
     } catch (e) {
       showToast?.(e.message)
     }
@@ -162,8 +164,8 @@ export default function ProfileModal({
           <div>
             <h2 className="display" style={{ fontSize: '24px' }}>
               {currentUser?.pseudo}
-              <ModBadge entry={social.avatarMap?.[currentUser?.id]} />
               <UserTag entry={social.avatarMap?.[currentUser?.id]} />
+              <ModBadge entry={social.avatarMap?.[currentUser?.id]} />
             </h2>
             <div className="profile-sub">
               {profile?.createdAt ? `Membre depuis le ${formatDate(profile.createdAt)} · ` : ''}
@@ -454,10 +456,15 @@ export default function ProfileModal({
                     ))}
                   </div>
                 </div>
+                <div className="admin-form-group">
+                  <label>Texte au survol (optionnel — la petite blague 😏)</label>
+                  <input className="admin-input" value={tagTip} onChange={e => setTagTip(e.target.value)}
+                    placeholder="Ex: va à la salle 1 fois par mois" maxLength={80} />
+                </div>
                 {tagLabel.trim() && (
                   <div style={{ marginBottom: '12px', fontSize: '13px' }}>
-                    Aperçu : <b>{tagPseudo.trim() || 'Pseudo'}</b>
-                    <UserTag entry={{ tagLabel: tagLabel.trim(), tagColor }} />
+                    Aperçu (survolez le tag) : <b>{tagPseudo.trim() || 'Pseudo'}</b>
+                    <UserTag entry={{ tagLabel: tagLabel.trim(), tagColor, tagTip: tagTip.trim() }} />
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '8px' }}>

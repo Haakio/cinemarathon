@@ -672,8 +672,6 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentRoomId={currentRoomId}
                 watchlist={watchlist}
-                watched={seenSource}
-                voteApi={voteApi}
                 roomMembers={roomMembers}
                 setRoomMembers={setRoomMembers}
                 canDeleteCurrentRoom={canDeleteCurrentRoom}

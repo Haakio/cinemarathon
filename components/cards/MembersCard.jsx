@@ -38,8 +38,8 @@ export default function MembersCard({ members, avatarMap = {} }) {
             <div className="member-body">
               <div className="member-name">
                 {member.pseudo}
-                <ModBadge entry={custom} />
                 <UserTag entry={custom} />
+                <ModBadge entry={custom} />
                 {member.isMe && <span className="me-tag">Toi</span>}
               </div>
               <div className="member-bar">

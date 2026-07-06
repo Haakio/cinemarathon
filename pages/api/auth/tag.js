@@ -17,17 +17,18 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Réservé à l\'administrateur du site' })
   }
 
-  const { pseudo, label, color } = req.body
+  const { pseudo, label, color, tip } = req.body
   if (!pseudo?.trim()) return res.status(400).json({ error: 'Pseudo requis' })
 
   const cleanLabel = String(label || '').trim().slice(0, 20)
   const cleanColor = cleanLabel ? (TAG_COLORS[color] ? color : 'gold') : ''
+  const cleanTip = cleanLabel ? String(tip || '').trim().slice(0, 80) : ''
 
   try {
     const target = await getUser(pseudo.trim())
     if (!target) return res.status(404).json({ error: 'Aucun compte avec ce pseudo' })
-    await updateUserTag(target.id, cleanLabel, cleanColor)
-    return res.status(200).json({ ok: true, pseudo: target.pseudo, label: cleanLabel, color: cleanColor })
+    await updateUserTag(target.id, cleanLabel, cleanColor, cleanTip)
+    return res.status(200).json({ ok: true, pseudo: target.pseudo, label: cleanLabel, color: cleanColor, tip: cleanTip })
   } catch (err) {
     console.error(err)
     return res.status(500).json({ error: 'Erreur serveur' })

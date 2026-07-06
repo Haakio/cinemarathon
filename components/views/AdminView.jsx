@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import VoteComposer from '../cards/VoteComposer'
 import { api } from '../../utils/api'
 import { TYPE_META } from '../../utils/constants'
 
@@ -14,8 +13,8 @@ const EMPTY_FORM = {
  * réordonnancement, suppression, gestion des admins de room.
  */
 export default function AdminView({
-  currentRoom, currentRoomId, watchlist, watched = [], roomMembers, setRoomMembers,
-  canDeleteCurrentRoom, isGlobalAdmin, loadData, showToast, voteApi, askConfirm,
+  currentRoom, currentRoomId, watchlist, roomMembers, setRoomMembers,
+  canDeleteCurrentRoom, isGlobalAdmin, loadData, showToast, askConfirm,
 }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
@@ -295,21 +294,6 @@ export default function AdminView({
             </div>
           )}
         </div>
-
-        {voteApi?.vote?.status === 'open' ? (
-          <div className="card anim-up-2">
-            <h2>🗳️ Vote de séance</h2>
-            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
-              Un vote est en cours dans cette room ({voteApi?.ballots?.length ?? 0} vote{(voteApi?.ballots?.length ?? 0) > 1 ? 's' : ''}).
-              Il se clôture automatiquement à l'échéance.
-            </p>
-            <button className="btn-ghost" style={{ marginTop: 0 }} onClick={voteApi.cancelActiveVote}>
-              Annuler le vote en cours
-            </button>
-          </div>
-        ) : (
-          <VoteComposer watchlist={watchlist} watched={watched} onCreate={voteApi.createVote} />
-        )}
 
         {(canDeleteCurrentRoom || isGlobalAdmin) && (
           <div className="card anim-up-3">

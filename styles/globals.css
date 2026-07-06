@@ -668,10 +668,27 @@ html {
 .member-body { flex: 1; min-width: 0; }
 .member-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
 .member-name .me-tag { font-size: 10px; color: var(--gold); border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 7px; }
+/* Tooltips maison (badges de staff, tags avec texte de survol) */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  background: var(--bg4); color: var(--text); border: 1px solid var(--border-strong);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.3px; text-transform: none;
+  padding: 5px 11px; border-radius: 8px; white-space: nowrap;
+  box-shadow: var(--shadow-card); z-index: 1000; pointer-events: none;
+  animation: fadeIn 0.15s ease both;
+}
+
 .mod-sword {
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--green); margin-left: 5px; vertical-align: middle;
   filter: drop-shadow(0 0 5px rgba(82, 196, 122, 0.5));
+}
+.mod-shield {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--red); margin-left: 5px; vertical-align: middle;
+  filter: drop-shadow(0 0 5px rgba(224, 82, 82, 0.55));
 }
 .user-tag {
   display: inline-flex; align-items: center; font-size: 10px; font-weight: 800;

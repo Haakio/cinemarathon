@@ -2,7 +2,8 @@ import { TAG_COLORS } from '../../utils/constants'
 
 /**
  * Petit tag coloré à côté d'un pseudo (attribué par l'admin du site).
- * Usage : <UserTag entry={avatarMap[userId] || avatarMap[pseudo]} />
+ * Si un texte de survol a été défini, il apparaît en tooltip au hover —
+ * parfait pour les private jokes. 😄
  */
 export default function UserTag({ entry }) {
   const label = entry?.tagLabel
@@ -11,10 +12,12 @@ export default function UserTag({ entry }) {
   return (
     <span
       className="user-tag"
+      data-tip={entry.tagTip || undefined}
       style={{
         color: hex,
         borderColor: `${hex}80`,
         background: `${hex}1a`,
+        cursor: entry.tagTip ? 'help' : 'default',
       }}
     >
       {label}

@@ -1,14 +1,27 @@
 import Icon from './Icon'
 
 /**
- * Épée verte des modérateurs du site — affichée à côté du pseudo,
- * partout où les avatars personnalisés circulent (avatarMap).
+ * Badge de staff à côté du pseudo (après les tags) :
+ * - Bouclier ROUGE : l'admin du site — survol : "Admin"
+ * - Épée VERTE : les modérateurs nommés — survol : "Modération"
  */
 export default function ModBadge({ entry }) {
-  if (!entry?.moderator) return null
-  return (
-    <span className="mod-sword" title="Modérateur du site">
-      <Icon name="sword" size={12} strokeWidth={2.2} />
-    </span>
-  )
+  const adminPseudo = process.env.NEXT_PUBLIC_ADMIN_PSEUDO
+  const isSiteAdmin = Boolean(entry?.pseudo) && Boolean(adminPseudo) && entry.pseudo === adminPseudo
+
+  if (isSiteAdmin) {
+    return (
+      <span className="mod-shield" data-tip="Admin">
+        <Icon name="shield" size={12} strokeWidth={2.2} />
+      </span>
+    )
+  }
+  if (entry?.moderator) {
+    return (
+      <span className="mod-sword" data-tip="Modération">
+        <Icon name="sword" size={12} strokeWidth={2.2} />
+      </span>
+    )
+  }
+  return null
 }
