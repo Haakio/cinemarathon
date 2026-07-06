@@ -12,6 +12,7 @@ export default function Header({
   currentUser, watchlist, watched,
   onOpenItem, onToggleSidebar, onLogout,
   profile, unreadCount, onOpenProfile, voteBadge = false,
+  isSiteAdmin = false, onOpenAdminPanel, modBadgeCount = 0,
 }) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
@@ -80,6 +81,12 @@ export default function Header({
       </div>
 
       <div className="topbar-right">
+        {isSiteAdmin && (
+          <button className="panel-btn" onClick={onOpenAdminPanel} title="Panel Modération">
+            <Icon name="shield" size={16} />
+            {modBadgeCount > 0 && <span className="notif-dot header-dot">{modBadgeCount}</span>}
+          </button>
+        )}
         <button className="user-menu-btn" onClick={onOpenProfile} title="Mon profil">
           <div className="avatar-badge-wrap">
             <Avatar

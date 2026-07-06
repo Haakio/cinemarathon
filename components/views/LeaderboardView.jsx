@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import Avatar from '../widgets/Avatar'
 import UserTag from '../widgets/UserTag'
+import ModBadge from '../widgets/ModBadge'
 import { buildLeaderboard } from '../../utils/stats'
 import { buildBadgeContext, computeBadges } from '../../lib/badges'
 
@@ -74,7 +75,7 @@ export default function LeaderboardView({ currentRoom, currentUser, watchlist, w
                 <div className="lb-rank">{index + 1}</div>
                 <Avatar pseudo={row.pseudo} emoji={custom.emoji || ''} hue={custom.hue ?? null} url={custom.url || ''} size={36} />
                 <div className="lb-body">
-                  <div className="lb-name">{row.pseudo}<UserTag entry={custom} />{isMe(row) ? ' (toi)' : ''}</div>
+                  <div className="lb-name">{row.pseudo}<ModBadge entry={custom} /><UserTag entry={custom} />{isMe(row) ? ' (toi)' : ''}</div>
                   <div className="lb-details">
                     {row.seen} vu{row.seen > 1 ? 's' : ''} ({row.percent}%)
                     {row.avgRating > 0 ? ` · note moy. ${row.avgRating}/10` : ''}

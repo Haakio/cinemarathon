@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Modal from './Modal'
 import Avatar from '../widgets/Avatar'
 import UserTag from '../widgets/UserTag'
+import ModBadge from '../widgets/ModBadge'
 import { api } from '../../utils/api'
 import { AVATAR_EMOJIS, AVATAR_HUES, TAG_COLORS } from '../../utils/constants'
 import { buildBadgeContext, computeBadges } from '../../lib/badges'
@@ -161,6 +162,7 @@ export default function ProfileModal({
           <div>
             <h2 className="display" style={{ fontSize: '24px' }}>
               {currentUser?.pseudo}
+              <ModBadge entry={social.avatarMap?.[currentUser?.id]} />
               <UserTag entry={social.avatarMap?.[currentUser?.id]} />
             </h2>
             <div className="profile-sub">
@@ -341,46 +343,6 @@ export default function ProfileModal({
         {/* ── NOTIFICATIONS ── */}
         {tab === 'notifications' && (
           <div>
-            {isGlobalAdmin && social.modCases?.length > 0 && (
-              <>
-                <h4 className="profile-section-title" style={{ color: 'var(--red)' }}>⛔ Modération</h4>
-                {social.modCases.map(modCase => (
-                  <div className="mod-case" key={modCase.userId}>
-                    <div className="mod-case-head">
-                      <b>{modCase.pseudo}</b>
-                      <span className={`chip ${modCase.banned ? '' : 'mod-pending'}`}>
-                        {modCase.banned ? 'Banni' : 'En attente de verdict'}
-                      </span>
-                    </div>
-                    <div className="mod-case-detail">
-                      Terme détecté : <b>« {modCase.term} »</b> — dans : {modCase.context || '?'}
-                      {modCase.blockedAt ? ` · ${formatRelative(modCase.blockedAt)}` : ''}
-                    </div>
-                    {modCase.text && <div className="mod-case-text">« {modCase.text} »</div>}
-                    <div className="mod-case-actions">
-                      {modCase.banned ? (
-                        <button className="friend-accept" onClick={() => social.moderateCase('unban', modCase.userId)}>
-                          Débannir
-                        </button>
-                      ) : (
-                        <>
-                          <button className="friend-accept" onClick={() => social.moderateCase('unblock', modCase.userId)}>
-                            Débloquer (contexte OK)
-                          </button>
-                          <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId)}>
-                            Bannir
-                          </button>
-                          <button className="friend-decline" onClick={() => social.moderateCase('ban', modCase.userId, true)}>
-                            Bannir + IP
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-
             {social.roomInvites?.length > 0 && (
               <>
                 <h4 className="profile-section-title">Invitations de room</h4>

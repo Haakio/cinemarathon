@@ -154,6 +154,17 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned INTEGER DEFAULT 0`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT DEFAULT ''`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS moderator INTEGER DEFAULT 0`
+    await sql`
+      CREATE TABLE IF NOT EXISTS appeal_messages (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        from_admin INTEGER DEFAULT 0,
+        pseudo TEXT,
+        message TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
     await sql`
       CREATE TABLE IF NOT EXISTS banned_ips (
         ip TEXT PRIMARY KEY,

@@ -62,6 +62,7 @@ export const VIEWS = {
   CLASSEMENT: 'classement',
   DISCUSSIONS: 'discussions',
   ADMIN: 'admin',
+  MODERATION: 'moderation',
   PARAMETRES: 'parametres',
 }
 

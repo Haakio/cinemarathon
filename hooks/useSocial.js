@@ -15,7 +15,7 @@ function getNotifSeenAt(userId) {
   return typeof window !== 'undefined' ? localStorage.getItem(`cm_notif_seen_${userId}`) : null
 }
 
-export function useSocial({ authed, currentUser, pageVisible = true, onNotify, onError, onSessionInvalid }) {
+export function useSocial({ authed, currentUser, pageVisible = true, onNotify, onUrgent, onError, onSessionInvalid }) {
   const [profile, setProfile] = useState(null)
   const [friends, setFriends] = useState([])
   const [incoming, setIncoming] = useState([])
@@ -96,17 +96,13 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
         try {
           const mod = await api('GET', '/auth/moderation')
           const cases = mod.cases || []
+          // Nouveau blocage → GRANDE alerte (plein écran + son), pas une
+          // petite popup : c'est un événement grave.
           const prevIds = prevSnapshotRef.current?.modIds
-          if (prevIds && onNotify) {
+          if (prevIds && onUrgent) {
             cases
               .filter(c => !c.banned && !prevIds.has(c.userId))
-              .forEach(c => onNotify({
-                icon: '⛔',
-                title: 'MODÉRATION — URGENT',
-                text: `${c.pseudo} bloqué : « ${c.term} » (${c.context})`,
-                tab: 'notifications',
-                urgent: true,
-              }))
+              .forEach(c => onUrgent(c))
           }
           prevSnapshotRef.current = { ...(prevSnapshotRef.current || {}), modIds: new Set(cases.map(c => c.userId)) }
           setModCases(cases)
@@ -220,9 +216,10 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
     }
   }, [onError])
 
-  // Demandes d'amis + invitations + dossiers de modération en attente
+  // Pastille avatar : demandes d'amis + invitations + patchnotes.
+  // Les dossiers de modération ont LEUR compteur sur l'entrée Bannissement.
   const pendingModCount = modCases.filter(c => !c.banned).length
-  const unreadCount = unreadPatchnotes + incoming.length + roomInvites.length + pendingModCount
+  const unreadCount = unreadPatchnotes + incoming.length + roomInvites.length
 
   const removeRoomInvite = useCallback(roomId => {
     setRoomInvites(prev => prev.filter(invite => invite.roomId !== roomId))
@@ -237,7 +234,7 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
 
   return {
     profile, friends, incoming, outgoing, avatarMap, roomInvites, removeRoomInvite,
-    modCases, moderateCase,
+    modCases, moderateCase, pendingModCount,
     updateAvatar, sendFriendRequest, acceptFriend, declineFriend, removeFriend, searchMembers,
     unreadCount, unreadPatchnotes, notifSeenAt, markNotificationsSeen,
     reload: loadSocial,

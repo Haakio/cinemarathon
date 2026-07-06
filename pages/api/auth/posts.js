@@ -1,4 +1,4 @@
-import { createFilmPost, deleteFilmPost, getFilmPost, getFilmPosts, hasRoomAccess } from '../../../lib/db'
+import { createFilmPost, deleteFilmPost, getFilmPost, getFilmPosts, getUserById, hasRoomAccess } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
 import { moderateOrBlock, rejectIfSuspended } from '../../../lib/guard'
 
@@ -83,7 +83,13 @@ export default async function handler(req, res) {
 
       const isOwner = post.user_id === user.id
       const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
-      if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Interdit' })
+      // Les modérateurs du site peuvent supprimer n'importe quel message
+      let isModerator = false
+      if (!isOwner && !isAdmin) {
+        const requester = await getUserById(user.id)
+        isModerator = Boolean(requester?.moderator)
+      }
+      if (!isOwner && !isAdmin && !isModerator) return res.status(403).json({ error: 'Interdit' })
 
       await deleteFilmPost(id) // supprime aussi les réponses
       return res.status(200).json({ ok: true })

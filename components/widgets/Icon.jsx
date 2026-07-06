@@ -79,6 +79,22 @@ const PATHS = {
       <circle cx="15.4" cy="12" r="0.6" />
     </>
   ),
+  // Épée (modérateur du site)
+  sword: (
+    <>
+      <path d="M20.5 3.5h-4L8 12l3.5 3.5 8.5-8.5v-3.5z" />
+      <line x1="6" y1="12" x2="11.5" y2="17.5" />
+      <line x1="8.5" y1="15" x2="4" y2="19.5" />
+      <circle cx="3.5" cy="20" r="0.8" />
+    </>
+  ),
+  // Bouclier (modération)
+  shield: (
+    <>
+      <path d="M12 2.5l7.5 3v6c0 4.8-3.2 8.4-7.5 10-4.3-1.6-7.5-5.2-7.5-10v-6l7.5-3z" />
+      <path d="M9 12l2 2 4-4.5" />
+    </>
+  ),
   // Réglages (engrenage)
   gear: (
     <>

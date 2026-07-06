@@ -21,7 +21,7 @@ const INSIGHT_ITEMS = [
   { id: VIEWS.CLASSEMENT, icon: 'crown', label: 'Classement' },
 ]
 
-export default function Sidebar({ view, onNavigate, currentRoom, memberCount, canManage, open, onClose, voteBadge = false }) {
+export default function Sidebar({ view, onNavigate, currentRoom, memberCount, canManage, open, onClose, voteBadge = false, isSiteAdmin = false, modCount = 0 }) {
   const navigate = id => { onNavigate(id); onClose?.() }
 
   const renderItem = item => (
@@ -63,10 +63,20 @@ export default function Sidebar({ view, onNavigate, currentRoom, memberCount, ca
           {MAIN_ITEMS.map(renderItem)}
           <div className="sidebar-section">Analyse</div>
           {INSIGHT_ITEMS.map(renderItem)}
-          {canManage && (
+          {(canManage || isSiteAdmin) && (
             <>
               <div className="sidebar-section">Gestion</div>
-              {renderItem({ id: VIEWS.ADMIN, icon: 'pen', label: 'Administration' })}
+              {canManage && renderItem({ id: VIEWS.ADMIN, icon: 'pen', label: 'Administration' })}
+              {isSiteAdmin && (
+                <button
+                  className={`nav-item ${view === VIEWS.MODERATION ? 'active' : ''}`}
+                  onClick={() => navigate(VIEWS.MODERATION)}
+                >
+                  <span className="nav-icon"><Icon name="shield" /></span>
+                  Bannissement
+                  {modCount > 0 && <span className="nav-bell" style={{ fontSize: '11px', fontWeight: 800 }}>{modCount}</span>}
+                </button>
+              )}
             </>
           )}
         </nav>

@@ -1,5 +1,6 @@
 import Avatar from './Avatar'
 import UserTag from './UserTag'
+import ModBadge from './ModBadge'
 import { formatTime } from '../../utils/format'
 
 /**
@@ -40,7 +41,7 @@ export default function ChatWidget({ chat, currentRoom, currentUser, avatarMap =
                   return (
                     <div key={msg.id} className={`chat-message ${mine ? 'mine' : ''}`}>
                       <div className="chat-meta">
-                        <span>{msg.pseudo || 'Membre'}<UserTag entry={custom} /></span>
+                        <span>{msg.pseudo || 'Membre'}<ModBadge entry={custom} /><UserTag entry={custom} /></span>
                         <small>{formatTime(msg.created_at)}</small>
                       </div>
                       <div className="chat-line">

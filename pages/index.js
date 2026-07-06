@@ -27,6 +27,7 @@ import LeaderboardView from '../components/views/LeaderboardView'
 import AdminView from '../components/views/AdminView'
 import DiscussionsView from '../components/views/DiscussionsView'
 import VoteView from '../components/views/VoteView'
+import ModerationView from '../components/views/ModerationView'
 
 // Modals & widgets
 import MovieModal from '../components/modals/MovieModal'
@@ -38,10 +39,13 @@ import WelcomeModal from '../components/modals/WelcomeModal'
 import ConfirmModal from '../components/modals/ConfirmModal'
 import ProfileModal from '../components/modals/ProfileModal'
 import ChatConsentModal from '../components/modals/ChatConsentModal'
+import AdminPanelModal from '../components/modals/AdminPanelModal'
 import ChatWidget from '../components/widgets/ChatWidget'
 import FeedbackWidget from '../components/widgets/FeedbackWidget'
 import Toast from '../components/widgets/Toast'
 import PopupStack from '../components/widgets/PopupStack'
+import UrgentAlert from '../components/widgets/UrgentAlert'
+import AppealChat from '../components/widgets/AppealChat'
 
 // Utils
 import { api, clearSession, getStoredUser, getToken, saveSession } from '../utils/api'
@@ -74,6 +78,7 @@ export default function App() {
   const [roomSettingsOpen, setRoomSettingsOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [welcomeOpen, setWelcomeOpen] = useState(false)
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
   const [roomMsg, setRoomMsg] = useState('')
@@ -135,9 +140,20 @@ export default function App() {
   } = marathon
 
   const chat = useChat({ authed, currentUser, currentRoomId, pageVisible: isActive, onError: showToast })
+  // Alerte de modération : plein écran + son (public/sounds/alert.mp3)
+  const [urgentAlert, setUrgentAlert] = useState(null)
+  const handleUrgent = useCallback(modCase => {
+    setUrgentAlert(modCase)
+    try {
+      const audio = new Audio('/sounds/alert.mp3')
+      audio.volume = 0.7
+      audio.play().catch(() => { }) // silencieux si fichier absent / autoplay bloqué
+    } catch { }
+  }, [])
+
   const social = useSocial({
     authed, currentUser, pageVisible: isActive,
-    onNotify: pushPopup, onError: showToast,
+    onNotify: pushPopup, onUrgent: handleUrgent, onError: showToast,
     onSessionInvalid: () => { logout(); showToast('Ce compte n\'existe plus.') },
   })
   const voteApi = useVote({ authed, currentRoomId, currentUser, view, pageVisible: isActive, onError: showToast })
@@ -486,7 +502,9 @@ export default function App() {
               ? 'Votre compte a été banni de Cinémarathon suite à des propos interdits.'
               : 'Un de vos messages a enfreint les règles (propos haineux). Il n\'a pas été publié et votre compte est suspendu le temps que l\'administrateur examine la situation.'}
           </p>
-          <button className="btn-ghost" style={{ width: 'auto' }} onClick={() => { setJustBlocked(false); logout() }}>
+          <div className="appeal-intro">💬 La modération va discuter avec vous — vous pouvez vous expliquer ici :</div>
+          <AppealChat placeholder="Expliquez le contexte..." />
+          <button className="btn-ghost" style={{ width: 'auto', marginTop: '16px' }} onClick={() => { setJustBlocked(false); logout() }}>
             Se déconnecter
           </button>
         </div>
@@ -509,6 +527,9 @@ export default function App() {
           unreadCount={social.unreadCount}
           voteBadge={voteBadge}
           onOpenProfile={() => { setProfileTab('profil'); setProfileOpen(true) }}
+          isSiteAdmin={isAdmin}
+          onOpenAdminPanel={() => setAdminPanelOpen(true)}
+          modBadgeCount={social.pendingModCount}
         />
 
         <RoomBar
@@ -532,6 +553,8 @@ export default function App() {
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             voteBadge={voteBadge}
+            isSiteAdmin={isAdmin}
+            modCount={social.pendingModCount}
           />
 
           <main className="content">
@@ -634,10 +657,15 @@ export default function App() {
                 currentRoomId={currentRoomId}
                 currentUser={currentUser}
                 isAdmin={isAdmin}
+                isModerator={Boolean(social.avatarMap[currentUser?.id]?.moderator)}
                 watchlist={watchlist}
                 showToast={showToast}
                 askConfirm={askConfirm}
+                avatarMap={social.avatarMap}
               />
+            )}
+            {view === VIEWS.MODERATION && isAdmin && (
+              <ModerationView social={social} avatarMap={social.avatarMap} />
             )}
             {view === VIEWS.ADMIN && canManageCurrentRoom && (
               <AdminView
@@ -753,11 +781,25 @@ export default function App() {
           onClose={closeWelcome}
         />
       )}
+      {adminPanelOpen && (
+        <AdminPanelModal
+          social={social}
+          showToast={showToast}
+          askConfirm={askConfirm}
+          onGoModeration={() => { setAdminPanelOpen(false); setView(VIEWS.MODERATION) }}
+          onClose={() => setAdminPanelOpen(false)}
+        />
+      )}
       {chat.chatPromptVisible && !welcomeOpen && <ChatConsentModal onChoose={chat.setChatPreference} />}
 
       {/* Widgets flottants */}
       <ChatWidget chat={chat} currentRoom={currentRoom} currentUser={currentUser} avatarMap={social.avatarMap} />
       <FeedbackWidget currentRoom={currentRoom} showToast={showToast} />
+      <UrgentAlert
+        alert={urgentAlert}
+        onView={() => { setUrgentAlert(null); setView(VIEWS.MODERATION) }}
+        onDismiss={() => setUrgentAlert(null)}
+      />
       <PopupStack
         popups={popups}
         onOpen={popup => {

@@ -21,15 +21,7 @@ export default function AdminView({
   const [editingId, setEditingId] = useState(null)
   const [msg, setMsg] = useState('')
 
-  // Réinitialisation de mot de passe (admin global uniquement)
-  const [resetPseudo, setResetPseudo] = useState('')
-  const [resetResult, setResetResult] = useState(null)
-  const [resetLoading, setResetLoading] = useState(false)
-
-  // Suppression de compte (admin global uniquement)
-  const [deletePseudo, setDeletePseudo] = useState('')
-  const [deleteConfirm, setDeleteConfirm] = useState('')
-  const [deleteLoading, setDeleteLoading] = useState(false)
+  // (Réinit mdp et suppression de compte ont migré dans le Panel Modération)
 
   // Recherche TMDB (debounce 400 ms pour limiter les appels)
   const [tmdbQuery, setTmdbQuery] = useState('')
@@ -161,45 +153,6 @@ export default function AdminView({
       await api('PUT', `/auth/watchlist/${id}`, { roomId: currentRoomId, dir })
       loadData()
     } catch { }
-  }
-
-  async function generateResetCode() {
-    if (!resetPseudo.trim()) { showToast('Entrez le pseudo du membre.'); return }
-    setResetLoading(true)
-    setResetResult(null)
-    try {
-      const data = await api('POST', '/auth/reset-code', { pseudo: resetPseudo.trim() })
-      setResetResult(data)
-      setResetPseudo('')
-    } catch (e) {
-      showToast('Réinit: ' + e.message)
-    }
-    setResetLoading(false)
-  }
-
-  function copyResetCode() {
-    if (!resetResult?.code) return
-    navigator.clipboard?.writeText(resetResult.code)
-      .then(() => showToast('Code copié ✓'))
-      .catch(() => showToast('Copie impossible, notez le code manuellement.'))
-  }
-
-  async function deleteAccount() {
-    const pseudo = deletePseudo.trim()
-    if (!pseudo) { showToast('Entrez le pseudo du compte.'); return }
-    if (deleteConfirm !== pseudo) { showToast('Retapez le pseudo exact dans la confirmation.'); return }
-    if (!(await askConfirm({ title: `Supprimer le compte ${pseudo}`, message: 'SUPPRESSION DÉFINITIVE : le compte, ses notes, messages, amitiés, votes, posts et ses rooms privées. Aucun retour en arrière possible.', confirmLabel: 'Supprimer définitivement', danger: true }))) return
-    setDeleteLoading(true)
-    try {
-      await api('POST', '/auth/delete-account', { pseudo, confirm: deleteConfirm })
-      setDeletePseudo('')
-      setDeleteConfirm('')
-      showToast(`Compte "${pseudo}" supprimé.`)
-      loadData()
-    } catch (e) {
-      showToast(e.message)
-    }
-    setDeleteLoading(false)
   }
 
   async function setRoomAdmin(member, makeAdmin) {
@@ -356,63 +309,6 @@ export default function AdminView({
           </div>
         ) : (
           <VoteComposer watchlist={watchlist} watched={watched} onCreate={voteApi.createVote} />
-        )}
-
-        {isGlobalAdmin && (
-          <div className="card anim-up-3">
-            <h2>Mot de passe oublié</h2>
-            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
-              Génère un code à usage unique (valable 30 min) et transmets-le au membre.
-              Il l'utilisera via « Mot de passe oublié ? » sur l'écran de connexion.
-            </p>
-            <div className="admin-form-group">
-              <label>Pseudo du membre</label>
-              <input className="admin-input" value={resetPseudo} onChange={e => setResetPseudo(e.target.value)}
-                placeholder="Ex: Matheo" onKeyDown={e => e.key === 'Enter' && generateResetCode()} />
-            </div>
-            <button className="btn-add" onClick={generateResetCode} disabled={resetLoading}>
-              {resetLoading ? 'Génération...' : 'Générer un code'}
-            </button>
-            {resetResult && (
-              <>
-                <div className="reset-code-display">
-                  <b>{resetResult.code}</b>
-                  <button onClick={copyResetCode}>Copier</button>
-                </div>
-                <div className="tmdb-hint">
-                  Code pour <strong>{resetResult.pseudo}</strong> — affiché une seule fois,
-                  expire dans {resetResult.expiresInMinutes} min.
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {isGlobalAdmin && (
-          <div className="card danger-card anim-up-3">
-            <h2>⚠️ Supprimer un compte</h2>
-            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.55, marginBottom: '14px' }}>
-              Suppression <strong style={{ color: 'var(--red)' }}>définitive et irréversible</strong> :
-              le compte, ses notes, messages, amitiés, votes, posts et ses rooms privées.
-            </p>
-            <div className="admin-form-group">
-              <label>Pseudo du compte</label>
-              <input className="admin-input" value={deletePseudo} onChange={e => setDeletePseudo(e.target.value)}
-                placeholder="Pseudo à supprimer" />
-            </div>
-            <div className="admin-form-group">
-              <label>Confirmation — retapez le pseudo</label>
-              <input className="admin-input" value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
-                placeholder="Retapez le pseudo exact" />
-            </div>
-            <button
-              className="btn-danger"
-              onClick={deleteAccount}
-              disabled={deleteLoading || !deletePseudo.trim() || deleteConfirm !== deletePseudo.trim()}
-            >
-              {deleteLoading ? 'Suppression...' : 'Supprimer définitivement ce compte'}
-            </button>
-          </div>
         )}
 
         {(canDeleteCurrentRoom || isGlobalAdmin) && (

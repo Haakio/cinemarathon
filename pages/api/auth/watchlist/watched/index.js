@@ -1,4 +1,4 @@
-import { getWatched, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
+import { getUserById, getWatched, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
 import { moderateOrBlock, rejectIfSuspended } from '../../../../../lib/guard'
 
@@ -58,8 +58,13 @@ export default async function handler(req, res) {
 
       const isOwner = entry.user_id === user.id
       const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
-
+      // Les modérateurs du site peuvent supprimer n'importe quel avis
+      let isModerator = false
       if (!isOwner && !isAdmin) {
+        const requester = await getUserById(user.id)
+        isModerator = Boolean(requester?.moderator)
+      }
+      if (!isOwner && !isAdmin && !isModerator) {
         return res.status(403).json({ error: 'Interdit' })
       }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Avatar from '../widgets/Avatar'
 import UserTag from '../widgets/UserTag'
+import ModBadge from '../widgets/ModBadge'
 import Modal from '../modals/Modal'
 import { api } from '../../utils/api'
 import { formatRelative } from '../../utils/format'
@@ -14,7 +15,7 @@ import { readAsDataURL, downscaleImage, extractImageUrl } from '../../utils/imag
  * Popup règles/fonctionnalités à la première visite.
  * Coût : chargement à l'ouverture + poll léger 5s UNIQUEMENT dans un sujet ouvert.
  */
-export default function DiscussionsView({ currentRoom, currentRoomId, currentUser, isAdmin, watchlist, showToast, askConfirm }) {
+export default function DiscussionsView({ currentRoom, currentRoomId, currentUser, isAdmin, isModerator = false, watchlist, showToast, askConfirm, avatarMap = {} }) {
   const [posts, setPosts] = useState([])
   const [avatars, setAvatars] = useState({})
   const [loading, setLoading] = useState(true)
@@ -81,8 +82,9 @@ export default function DiscussionsView({ currentRoom, currentRoomId, currentUse
   }, [posts])
 
   const itemOf = id => watchlist.find(w => w.id === id)
-  const avatarOf = post => avatars[post.user_id] || {}
-  const canDelete = post => post.user_id === currentUser?.id || isAdmin
+  // Fusion : avatars du chargement posts + map de session (tags, épée modo)
+  const avatarOf = post => ({ ...(avatars[post.user_id] || {}), ...(avatarMap[post.user_id] || {}) })
+  const canDelete = post => post.user_id === currentUser?.id || isAdmin || isModerator
   const openPost = openId ? posts.find(p => p.id === openId) : null
   const openReplies = openId ? (repliesByParent[openId] || []) : []
 
@@ -165,7 +167,7 @@ export default function DiscussionsView({ currentRoom, currentRoomId, currentUse
           <div className="post-head">
             <Avatar pseudo={openPost.pseudo} emoji={custom.emoji || ''} hue={custom.hue ?? null} url={custom.url || ''} size={40} />
             <div className="post-head-info">
-              <b>{openPost.pseudo}<UserTag entry={custom} /></b>
+              <b>{openPost.pseudo}<ModBadge entry={custom} /><UserTag entry={custom} /></b>
               <small>{formatRelative(openPost.created_at)}</small>
             </div>
             {item && <span className="chip post-film-chip">{(TYPE_META[item.type] || TYPE_META.film).icon} {item.title}</span>}
@@ -188,7 +190,7 @@ export default function DiscussionsView({ currentRoom, currentRoomId, currentUse
                 <Avatar pseudo={reply.pseudo} emoji={rc.emoji || ''} hue={rc.hue ?? null} url={rc.url || ''} size={30} />
                 <div className="thread-msg-body">
                   <div className="thread-msg-meta">
-                    <b>{reply.pseudo}</b><UserTag entry={rc} />
+                    <b>{reply.pseudo}</b><ModBadge entry={rc} /><UserTag entry={rc} />
                     <small>{formatRelative(reply.created_at)}</small>
                     {canDelete(reply) && (
                       <button className="post-reply-delete" onClick={() => deletePost(reply.id)}>✕</button>
