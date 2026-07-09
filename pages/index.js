@@ -139,6 +139,41 @@ export default function App() {
     loadData, loadAvailability, reset,
   } = marathon
 
+  // Confidentialité de mes notes : masquage par room + raccourci "toutes les rooms publiques"
+  const [ratingVisibility, setRatingVisibility] = useState({ hidePublic: false, hiddenRoomIds: [] })
+  useEffect(() => {
+    if (!authed) return
+    api('GET', '/auth/rating-visibility').then(setRatingVisibility).catch(() => {})
+  }, [authed])
+
+  const setHidePublicRatings = useCallback(async hidden => {
+    try {
+      const prefs = await api('POST', '/auth/rating-visibility', { scope: 'public', hidden })
+      setRatingVisibility(prefs)
+    } catch (e) { showToast(e.message || 'Impossible de mettre à jour ce réglage.') }
+  }, [showToast])
+
+  const setRoomRatingHidden = useCallback(async (roomId, hidden) => {
+    try {
+      const prefs = await api('POST', '/auth/rating-visibility', { scope: 'room', roomId, hidden })
+      setRatingVisibility(prefs)
+    } catch (e) { showToast(e.message || 'Impossible de mettre à jour ce réglage.') }
+  }, [showToast])
+
+  async function deleteMyAccount(confirmText) {
+    if (!(await askConfirm({
+      title: 'Supprimer mon compte',
+      message: 'SUPPRESSION DÉFINITIVE : votre compte, vos notes, messages, amitiés, votes, posts et vos rooms privées. Aucun retour en arrière possible.',
+      confirmLabel: 'Supprimer définitivement',
+      danger: true,
+    }))) return
+    try {
+      await api('POST', '/auth/delete-my-account', { confirm: confirmText })
+      showToast('Compte supprimé.')
+      logout()
+    } catch (e) { showToast(e.message || 'Impossible de supprimer le compte.') }
+  }
+
   const chat = useChat({ authed, currentUser, currentRoomId, pageVisible: isActive, onError: showToast })
   // Alerte de modération : plein écran + son (public/sounds/alert.mp3)
   const [urgentAlert, setUrgentAlert] = useState(null)
@@ -772,6 +807,11 @@ export default function App() {
           chatMessages={chat.chatMessages}
           chatEnabled={chat.chatEnabled}
           onChatPreference={chat.setChatPreference}
+          rooms={rooms}
+          ratingVisibility={ratingVisibility}
+          onSetHidePublicRatings={setHidePublicRatings}
+          onSetRoomRatingHidden={setRoomRatingHidden}
+          onDeleteAccount={deleteMyAccount}
           onLogout={logout}
         />
       )}

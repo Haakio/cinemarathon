@@ -11,7 +11,7 @@ import { api } from '../../utils/api'
  * mot de passe et suppression de compte (migrés depuis l'Administration),
  * et l'accès rapide au pupitre de Bannissement.
  */
-export default function AdminPanelModal({ social, showToast, askConfirm, onGoModeration, onClose }) {
+export default function AdminPanelModal({ social, isAdmin = false, showToast, askConfirm, onGoModeration, onClose }) {
   // ── Conversation avec un compte suspendu ────────────────
   const [chatWith, setChatWith] = useState(null) // { userId, pseudo }
 
@@ -103,7 +103,7 @@ export default function AdminPanelModal({ social, showToast, askConfirm, onGoMod
   return (
     <Modal onClose={onClose} className="admin-panel">
       <div className="modal-body">
-        <span className="kicker">Admin du site</span>
+        <span className="kicker">{isAdmin ? 'Admin du site' : 'Modération'}</span>
         <h2 className="display" style={{ fontSize: '24px', margin: '6px 0 18px' }}>Panel Modération</h2>
 
         {social.modCases.length > 0 && (
@@ -134,6 +134,14 @@ export default function AdminPanelModal({ social, showToast, askConfirm, onGoMod
           {social.pendingModCount > 0 && <span className="notif-dot">{social.pendingModCount}</span>}
         </button>
 
+        {!isAdmin && (
+          <p className="tmdb-hint" style={{ marginTop: 0, marginBottom: '14px' }}>
+            En tant que modérateur : discutez avec les comptes suspendus et débloquez
+            les cas où le contexte est OK. Bannissements et outils de compte réservés à l'admin.
+          </p>
+        )}
+
+        {isAdmin && (<>
         <h4 className="profile-section-title">⚔️ Modérateurs du site</h4>
         <p className="tmdb-hint" style={{ marginTop: 0, marginBottom: '10px' }}>
           Épée verte à côté du pseudo. Pouvoirs : supprimer n'importe quel message de discussion et n'importe quel avis.
@@ -193,6 +201,7 @@ export default function AdminPanelModal({ social, showToast, askConfirm, onGoMod
         >
           {deleteLoading ? 'Suppression...' : 'Supprimer définitivement ce compte'}
         </button>
+        </>)}
       </div>
     </Modal>
   )

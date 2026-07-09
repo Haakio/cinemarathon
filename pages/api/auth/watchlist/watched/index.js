@@ -1,4 +1,4 @@
-import { getUserById, getWatched, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
+import { getUserById, getWatched, getHiddenRatingUserIds, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
 import { moderateOrBlock, rejectIfSuspended } from '../../../../../lib/guard'
 
@@ -13,7 +13,9 @@ export default async function handler(req, res) {
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const entries = await getWatched(roomId)
-      return res.status(200).json(entries)
+      const hiddenUserIds = await getHiddenRatingUserIds(roomId)
+      const visible = entries.filter(e => e.user_id === user.id || !hiddenUserIds.has(e.user_id))
+      return res.status(200).json(visible)
     } catch (err) {
       console.error(err)
       return res.status(500).json({ error: 'Erreur serveur' })

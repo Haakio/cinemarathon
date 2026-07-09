@@ -296,6 +296,25 @@ html {
 .settings-row strong { font-size: 13px; color: var(--text); }
 .settings-row small { font-size: 11px; color: var(--text2); line-height: 1.3; }
 .settings-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); flex-shrink: 0; }
+.switch { position: relative; display: inline-flex; flex-shrink: 0; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch-track {
+  width: 40px; height: 23px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border);
+  position: relative; transition: all 0.2s var(--ease);
+}
+.switch-thumb {
+  position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+  background: var(--text3); transition: all 0.2s var(--ease);
+}
+.switch input:checked + .switch-track { background: rgba(255, 199, 89, 0.18); border-color: var(--gold); }
+.switch input:checked + .switch-track .switch-thumb { transform: translateX(17px); background: var(--gold); }
+.rating-room-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rating-room-chip {
+  padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2); transition: all 0.2s var(--ease);
+}
+.rating-room-chip:hover { border-color: var(--gold); color: var(--text); }
+.rating-room-chip.active { background: rgba(255, 199, 89, 0.14); border-color: var(--gold); color: var(--gold); }
 .panel-btn {
   position: relative; width: 38px; height: 38px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -308,6 +327,13 @@ html {
   padding: 8px 16px; border-radius: 999px; font-size: 13px; transition: all 0.2s; white-space: nowrap;
 }
 .btn-logout:hover { border-color: var(--red); color: var(--red); }
+.kofi-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: 1px solid rgba(255, 199, 89, 0.4); color: var(--gold);
+  padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  white-space: nowrap; transition: all 0.2s;
+}
+.kofi-btn:hover { border-color: var(--gold); background: rgba(255, 199, 89, 0.1); }
 
 /* Barre de rooms */
 .room-bar {

@@ -21,7 +21,18 @@ export default function ProfileModal({
   onAcceptRoomInvite, onDeclineRoomInvite, isGlobalAdmin = false, showToast,
   watchlist, watched, availability, chatMessages,
   chatEnabled, onChatPreference, onLogout,
+  rooms = [], ratingVisibility = { hidePublic: false, hiddenRoomIds: [] },
+  onSetHidePublicRatings, onSetRoomRatingHidden, onDeleteAccount,
 }) {
+  // ── Suppression de compte ───────────────────────────────
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    await onDeleteAccount?.(deleteConfirm.trim())
+    setDeleting(false)
+  }
   const [tab, setTab] = useState(initialTab)
   const { profile, friends, incoming, outgoing } = social
 
@@ -442,8 +453,58 @@ export default function ProfileModal({
                 <strong>Chat</strong>
                 <small>Bulle de discussion par room</small>
               </span>
-              <input type="checkbox" checked={chatEnabled} onChange={e => onChatPreference(e.target.checked)} />
+              <span className="switch">
+                <input type="checkbox" checked={chatEnabled} onChange={e => onChatPreference(e.target.checked)} />
+                <span className="switch-track"><span className="switch-thumb" /></span>
+              </span>
             </label>
+
+            <h4 className="profile-section-title" style={{ marginTop: '20px' }}>🙈 Confidentialité de mes notes</h4>
+            <p className="tmdb-hint" style={{ marginTop: 0 }}>
+              Vos notes et avis restent visibles pour vous, mais peuvent être cachés aux autres membres.
+            </p>
+            <label className="settings-row">
+              <span>
+                <strong>Toutes les rooms publiques</strong>
+                <small>Cache mes notes partout où la room est publique</small>
+              </span>
+              <span className="switch">
+                <input
+                  type="checkbox"
+                  checked={Boolean(ratingVisibility.hidePublic)}
+                  onChange={e => onSetHidePublicRatings?.(e.target.checked)}
+                />
+                <span className="switch-track"><span className="switch-thumb" /></span>
+              </span>
+            </label>
+
+            {(() => {
+              const privateRooms = rooms.filter(room => room.id !== 'marvel' && room.is_private !== false)
+              if (!privateRooms.length) return null
+              return (
+                <>
+                  <div className="tmdb-hint" style={{ marginTop: '10px' }}>
+                    Room par room — cliquez pour cacher/afficher vos notes dedans :
+                  </div>
+                  <div className="rating-room-chips">
+                    {privateRooms.map(room => {
+                      const hidden = ratingVisibility.hiddenRoomIds.includes(room.id)
+                      return (
+                        <button
+                          key={room.id}
+                          type="button"
+                          className={`rating-room-chip ${hidden ? 'active' : ''}`}
+                          onClick={() => onSetRoomRatingHidden?.(room.id, !hidden)}
+                          title={hidden ? `Notes cachées dans ${room.name}` : `Notes visibles dans ${room.name}`}
+                        >
+                          {hidden ? '🙈' : '👁️'} {room.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
 
             {isGlobalAdmin && (
               <>
@@ -512,6 +573,34 @@ export default function ProfileModal({
             <button className="btn-ghost" style={{ marginTop: '14px' }} onClick={onLogout}>
               Se déconnecter
             </button>
+
+            {isGlobalAdmin ? (
+              <p className="tmdb-hint" style={{ marginTop: '18px' }}>
+                L'administrateur du site ne peut pas supprimer son propre compte depuis cette page.
+              </p>
+            ) : (
+              <>
+                <h4 className="profile-section-title" style={{ marginTop: '22px', color: 'var(--red)' }}>⚠️ Supprimer mon compte</h4>
+                <p className="tmdb-hint" style={{ marginTop: 0 }}>
+                  Suppression définitive et irréversible (obligation légale) : compte, notes, messages, amitiés, votes, posts et rooms privées créées par vous.
+                </p>
+                <div className="admin-form-group">
+                  <input
+                    className="admin-input"
+                    value={deleteConfirm}
+                    onChange={e => setDeleteConfirm(e.target.value)}
+                    placeholder={`Retapez "${currentUser?.pseudo}" pour confirmer`}
+                  />
+                </div>
+                <button
+                  className="btn-danger"
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || deleteConfirm.trim() !== currentUser?.pseudo}
+                >
+                  {deleting ? 'Suppression...' : 'Supprimer définitivement mon compte'}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

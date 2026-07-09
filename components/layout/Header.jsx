@@ -81,6 +81,15 @@ export default function Header({
       </div>
 
       <div className="topbar-right">
+        <a
+          className="kofi-btn"
+          href={process.env.NEXT_PUBLIC_KOFI_URL || 'https://ko-fi.com/cinemarathon'}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Soutenir le site sur Ko-fi"
+        >
+          ☕ Faire un don
+        </a>
         {isSiteAdmin && (
           <button className="panel-btn" onClick={onOpenAdminPanel} title="Panel Modération">
             <Icon name="shield" size={16} />
