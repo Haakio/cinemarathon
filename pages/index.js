@@ -50,6 +50,7 @@ import AppealChat from '../components/widgets/AppealChat'
 // Utils
 import { api, clearSession, getStoredUser, getToken, saveSession } from '../utils/api'
 import { VIEWS } from '../utils/constants'
+import { sortByMode } from '../lib/mcuChrono'
 
 /**
  * Orchestrateur de l'application.
@@ -278,42 +279,61 @@ export default function App() {
     reset()
   }
 
+  // ── Ordre d'affichage/visionnage (Liste + Regarder) ─────
+  // "Ordre chronologique" par défaut, ou "MCU (chrono)" si l'utilisateur
+  // l'a choisi — mémorisé par room pour ne PAS revenir tout seul à
+  // l'ordre chronologique tant qu'il ne re-clique pas dessus.
+  const [listSort, setListSortState] = useState('marathon')
+  useEffect(() => {
+    setListSortState(localStorage.getItem(`cm_sort_${currentRoomId}`) || 'marathon')
+  }, [currentRoomId])
+  const setListSort = useCallback(value => {
+    setListSortState(value)
+    localStorage.setItem(`cm_sort_${currentRoomId}`, value)
+  }, [currentRoomId])
+
+  // Liste utilisée par "Regarder" : le marathon dans l'ordre actuellement
+  // choisi (chronologique ou MCU), pour que le premier film proposé change
+  // avec le mode sélectionné au lieu de toujours démarrer sur l'ordre DB.
+  const watchOrderList = useMemo(() => sortByMode(watchlist, listSort), [watchlist, listSort])
+
   // ── Reprise du carrousel "Regarder" ─────────────────────
   // Le film courant est mémorisé par room (localStorage) : après un
   // refresh, on reprend là où on s'était arrêté, pas au premier de la liste.
   const setWatchIdxPersist = useCallback(idx => {
     setWatchIdx(idx)
-    const item = watchlist[idx]
+    const item = watchOrderList[idx]
     if (item) localStorage.setItem(`cm_watch_item_${currentRoomId}`, item.id)
-  }, [watchlist, currentRoomId])
+  }, [watchOrderList, currentRoomId])
 
-  const restoredRoomRef = useRef(null)
+  const restoredKeyRef = useRef(null)
   useEffect(() => {
-    if (!watchlist.length) return
-    if (restoredRoomRef.current === currentRoomId) return
+    if (!watchOrderList.length) return
+    const key = `${currentRoomId}:${listSort}`
+    if (restoredKeyRef.current === key) return
     const savedId = localStorage.getItem(`cm_watch_item_${currentRoomId}`)
     if (!savedId) {
-      restoredRoomRef.current = currentRoomId
+      restoredKeyRef.current = key
       return
     }
-    const idx = watchlist.findIndex(w => w.id === savedId)
+    const idx = watchOrderList.findIndex(w => w.id === savedId)
     // Si le film n'est pas dans la liste, c'est peut-être encore celle de
     // l'ancienne room : on retentera au prochain chargement.
     if (idx >= 0) {
       setWatchIdx(idx)
-      restoredRoomRef.current = currentRoomId
+      restoredKeyRef.current = key
     }
-  }, [watchlist, currentRoomId])
+  }, [watchOrderList, currentRoomId, listSort])
 
   const goWatch = useCallback(id => {
-    const idx = watchlist.findIndex(w => w.id === id)
+    const idx = watchOrderList.findIndex(w => w.id === id)
     if (idx >= 0) {
       setWatchIdxPersist(idx)
       setView(VIEWS.REGARDER)
       setSelectedItem(null)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [watchlist, setWatchIdxPersist])
+  }, [watchOrderList, setWatchIdxPersist])
 
   const openDetails = useCallback(item => setSelectedItem(item), [])
 
@@ -637,11 +657,13 @@ export default function App() {
                 currentUser={currentUser}
                 onWatch={goWatch}
                 onOpenDetails={openDetails}
+                sort={listSort}
+                onSetSort={setListSort}
               />
             )}
             {view === VIEWS.REGARDER && (
               <WatchView
-                watchlist={watchlist}
+                watchlist={watchOrderList}
                 watched={watched}
                 seenSource={seenSource}
                 currentUser={currentUser}

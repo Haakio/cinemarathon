@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import MovieCard from '../cards/MovieCard'
 import { LIST_FILTERS } from '../../utils/constants'
 import { getSeenItemIds } from '../../utils/stats'
-import { mcuRank } from '../../lib/mcuChrono'
+import { sortByMode } from '../../lib/mcuChrono'
 
 /**
  * Liste du marathon : grille de cartes premium avec filtres.
@@ -20,9 +20,8 @@ const sortOptions = isMarvel => [
   ['release-desc', 'Sortie ↓'],
 ]
 
-export default function ListView({ currentRoom, watchlist, watched, seenSource, currentUser, onWatch, onOpenDetails }) {
+export default function ListView({ currentRoom, watchlist, watched, seenSource, currentUser, onWatch, onOpenDetails, sort, onSetSort }) {
   const [filter, setFilter] = useState('all')
-  const [sort, setSort] = useState('marathon')
 
   // En room publique, seenSource = uniquement mes visionnages
   const seen = seenSource || watched
@@ -39,31 +38,9 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
 
     // Mode MCU : UNIQUEMENT les 35 films de la liste officielle
     // (lib/mcuChrono.js), dans son ordre exact. Séries et Marvel hors MCU
-    // sont masqués.
-    if (sort === 'mcu') {
-      return list
-        .map(item => ({ item, rank: mcuRank(item.title) }))
-        .filter(entry => entry.rank >= 0)
-        .sort((a, b) => a.rank - b.rank || a.item.order - b.item.order)
-        .map(entry => entry.item)
-    }
-
-    // Tri par date de sortie : date TMDB complète si disponible (départage
-    // les titres d'une même année), sinon milieu d'année approximatif.
-    if (sort !== 'marathon') {
-      const asc = sort === 'release-asc'
-      const dateOf = item => {
-        if (item.release_date) {
-          const time = Date.parse(item.release_date)
-          if (!Number.isNaN(time)) return time
-        }
-        const year = parseInt(item.year, 10)
-        if (year) return Date.parse(`${year}-06-30`)
-        return asc ? Infinity : -Infinity // sans date → fin de liste
-      }
-      list.sort((a, b) => asc ? dateOf(a) - dateOf(b) : dateOf(b) - dateOf(a))
-    }
-    return list
+    // sont masqués. Même logique que "Regarder" (lib/mcuChrono.sortByMode),
+    // pour que les deux vues restent cohérentes.
+    return sortByMode(list, sort)
   }, [watchlist, filter, sort, seenSet])
 
   const myRatings = useMemo(() => {
@@ -92,7 +69,7 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
         ))}
         <span className="filters-divider" />
         {sortOptions(currentRoom.id === 'marvel').map(([value, label]) => (
-          <button key={value} className={`filter-btn ${sort === value ? 'active' : ''}`} onClick={() => setSort(value)}>
+          <button key={value} className={`filter-btn ${sort === value ? 'active' : ''}`} onClick={() => onSetSort(value)}>
             {label}
           </button>
         ))}
