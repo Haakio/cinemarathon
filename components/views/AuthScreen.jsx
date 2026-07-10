@@ -14,6 +14,7 @@ export default function AuthScreen({ onAuthed }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [resetCode, setResetCode] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
 
   function switchTab(next) {
     setTab(next)
@@ -22,18 +23,20 @@ export default function AuthScreen({ onAuthed }) {
     setPassword('')
     setConfirm('')
     setResetCode('')
+    setAcceptTerms(false)
   }
 
   async function submitAuth() {
     if (!pseudo.trim() || !password) { setError('Remplissez tous les champs.'); return }
     if (tab === 'register' && password !== confirm) { setError('Les mots de passe ne correspondent pas.'); return }
+    if (tab === 'register' && !acceptTerms) { setError('Vous devez accepter les CGU et confirmer avoir au moins 15 ans.'); return }
     setLoading(true)
     setError('')
     try {
       const res = await fetch(`/api/auth/${tab}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pseudo: pseudo.trim(), password }),
+        body: JSON.stringify({ pseudo: pseudo.trim(), password, acceptTerms: tab === 'register' ? acceptTerms : undefined }),
       })
       const json = await res.json()
       if (!res.ok) { setError(json.error); setLoading(false); return }
@@ -117,7 +120,18 @@ export default function AuthScreen({ onAuthed }) {
           </div>
         )}
 
-        <button className="btn-primary" onClick={submit} disabled={loading}>
+        {tab === 'register' && (
+          <label className="auth-terms">
+            <input type="checkbox" checked={acceptTerms} onChange={e => setAcceptTerms(e.target.checked)} />
+            <span>
+              J'ai au moins 15 ans et j'accepte les{' '}
+              <a href="/cgu" target="_blank" rel="noopener noreferrer">CGU</a> et la{' '}
+              <a href="/confidentialite" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>.
+            </span>
+          </label>
+        )}
+
+        <button className="btn-primary" onClick={submit} disabled={loading || (tab === 'register' && !acceptTerms)}>
           {loading
             ? 'Un instant…'
             : tab === 'login' ? 'Entrer dans la salle'

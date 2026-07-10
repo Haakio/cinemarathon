@@ -33,6 +33,26 @@ export default function ProfileModal({
     await onDeleteAccount?.(deleteConfirm.trim())
     setDeleting(false)
   }
+
+  // ── Export de mes données (portabilité RGPD) ────────────
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExportData() {
+    setExporting(true)
+    try {
+      const data = await api('GET', '/auth/export-data')
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `cinemarathon-${currentUser?.pseudo || 'mes-donnees'}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      showToast?.(e.message || 'Impossible de générer l\'export.')
+    }
+    setExporting(false)
+  }
   const [tab, setTab] = useState(initialTab)
   const { profile, friends, incoming, outgoing } = social
 
@@ -570,7 +590,11 @@ export default function ProfileModal({
               </>
             )}
 
-            <button className="btn-ghost" style={{ marginTop: '14px' }} onClick={onLogout}>
+            <button className="btn-ghost" style={{ marginTop: '14px' }} onClick={handleExportData} disabled={exporting}>
+              {exporting ? 'Génération...' : '📥 Télécharger mes données'}
+            </button>
+
+            <button className="btn-ghost" onClick={onLogout}>
               Se déconnecter
             </button>
 

@@ -8,10 +8,11 @@ function uid() { return Math.random().toString(36).substr(2, 12) }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
-  const { pseudo, password } = req.body
+  const { pseudo, password, acceptTerms } = req.body
   if (!pseudo || !password) return res.status(400).json({ error: 'Champs manquants' })
   if (pseudo.trim().length < 2) return res.status(400).json({ error: 'Pseudo trop court (min 2 caractères)' })
   if (password.length < 4) return res.status(400).json({ error: 'Mot de passe trop court (min 4 caractères)' })
+  if (acceptTerms !== true) return res.status(400).json({ error: 'Vous devez accepter les CGU et confirmer avoir au moins 15 ans.' })
 
   // Pseudo haineux refusé d'entrée (sans création de compte)
   if (checkForbidden(pseudo)) {

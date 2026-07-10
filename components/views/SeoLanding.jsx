@@ -45,6 +45,12 @@ export default function SeoLanding() {
         ou consultez notre <a href="/ordre-marvel">ordre chronologique des films Marvel</a> pour
         préparer votre marathon MCU.
       </p>
+
+      <p className="seo-footer-links">
+        <a href="/mentions-legales">Mentions légales</a> ·{' '}
+        <a href="/confidentialite">Confidentialité</a> ·{' '}
+        <a href="/cgu">CGU</a>
+      </p>
     </section>
   )
 }

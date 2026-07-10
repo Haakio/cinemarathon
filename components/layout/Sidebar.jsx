@@ -84,6 +84,12 @@ export default function Sidebar({ view, onNavigate, currentRoom, memberCount, ca
         <div className="sidebar-footer">
           Cinémarathon · fait pour les soirées entre amis
           <br />Développé avec l'aide d'une IA (Claude)
+          <br />
+          <a href="/mentions-legales" target="_blank" rel="noopener noreferrer">Mentions légales</a>
+          {' · '}
+          <a href="/confidentialite" target="_blank" rel="noopener noreferrer">Confidentialité</a>
+          {' · '}
+          <a href="/cgu" target="_blank" rel="noopener noreferrer">CGU</a>
         </div>
       </aside>
     </>

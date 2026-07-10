@@ -192,6 +192,12 @@ html {
   text-underline-offset: 3px; transition: color 0.2s;
 }
 .auth-link:hover { color: var(--gold); }
+.auth-terms {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px;
+  font-size: 12.5px; color: var(--text2); line-height: 1.5; cursor: pointer;
+}
+.auth-terms input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--gold); flex-shrink: 0; }
+.auth-terms a { color: var(--gold); text-decoration: underline; }
 
 /* Code de réinitialisation généré (affichage admin) */
 .reset-code-display {
@@ -482,6 +488,8 @@ html {
   background: linear-gradient(var(--gold-light), var(--gold-dark)); border-radius: 0 3px 3px 0;
 }
 .sidebar-footer { margin-top: auto; font-size: 11px; color: var(--text3); padding: 0 12px; }
+.sidebar-footer a { color: var(--text3); text-decoration: underline; }
+.sidebar-footer a:hover { color: var(--gold); }
 
 .sidebar-backdrop { display: none; }
 
@@ -1704,6 +1712,9 @@ html {
 .seo-features p { font-size: 13px; color: var(--text2); line-height: 1.6; }
 .seo-cta { font-size: 14px; }
 .seo-cta a { color: var(--gold); }
+.seo-footer-links { margin-top: 18px; font-size: 12px; color: var(--text3); }
+.seo-footer-links a { color: var(--text3); text-decoration: underline; }
+.seo-footer-links a:hover { color: var(--gold); }
 
 .seo-page { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
 .seo-page-brand {
@@ -1727,6 +1738,31 @@ html {
 .seo-page-cta .btn-play { text-decoration: none; }
 @media (max-width: 700px) {
   .seo-page-columns { grid-template-columns: 1fr; }
+}
+
+/* Pages légales (mentions, confidentialité, CGU) */
+.legal-page section { margin-top: 30px; }
+.legal-page h2 { font-family: var(--font-display); font-size: 19px; color: var(--gold); margin-bottom: 10px; }
+.legal-page p { color: var(--text2); font-size: 14px; line-height: 1.7; margin-bottom: 10px; }
+.legal-page ul { margin: 0 0 10px 20px; color: var(--text2); font-size: 14px; line-height: 1.8; }
+.legal-page li strong { color: var(--text); }
+.legal-page a { color: var(--gold); text-decoration: underline; }
+.legal-page code { background: var(--bg2); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+.legal-links { margin-top: 40px; font-size: 13px; color: var(--text3); }
+
+/* Bandeau d'information stockage local */
+.privacy-banner {
+  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 500;
+  max-width: 640px; margin: 0 auto;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  background: var(--bg2); border: 1px solid var(--border-strong); border-radius: var(--radius);
+  padding: 16px 20px; box-shadow: var(--shadow-pop);
+}
+.privacy-banner p { flex: 1; min-width: 220px; font-size: 13px; color: var(--text2); line-height: 1.5; margin: 0; }
+.privacy-banner a { color: var(--gold); }
+.privacy-banner button {
+  background: var(--gold); color: #000; border: none; border-radius: 999px;
+  padding: 9px 20px; font-size: 13px; font-weight: 700; white-space: nowrap;
 }
 
 /* ════════════════════════════════════════════════════════
