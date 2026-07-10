@@ -15,6 +15,10 @@ function getNotifSeenAt(userId) {
   return typeof window !== 'undefined' ? localStorage.getItem(`cm_notif_seen_${userId}`) : null
 }
 
+// Même seuil que la présence des membres de room (utils/stats.js buildMembers)
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000
+const isFriendOnline = friend => Boolean(friend.lastSeen) && (Date.now() - new Date(friend.lastSeen).getTime() < ONLINE_THRESHOLD_MS)
+
 export function useSocial({ authed, currentUser, pageVisible = true, onNotify, onUrgent, onError, onSessionInvalid }) {
   const [profile, setProfile] = useState(null)
   const [friends, setFriends] = useState([])
@@ -36,10 +40,11 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
         api('GET', '/auth/friends'),
         api('GET', '/auth/avatars'),
       ])
-      const nextFriends = friendData.friends || []
+      const nextFriends = (friendData.friends || []).map(f => ({ ...f, online: isFriendOnline(f) }))
       const nextIncoming = friendData.incoming || []
       const nextOutgoing = friendData.outgoing || []
       const nextInvites = friendData.roomInvites || []
+      const nextOnlineIds = new Set(nextFriends.filter(f => f.online).map(f => f.userId))
 
       // Détection des événements depuis le dernier chargement → popups
       const prev = prevSnapshotRef.current
@@ -68,12 +73,22 @@ export function useSocial({ authed, currentUser, pageVisible = true, onNotify, o
             text: `${friend.pseudo} a accepté votre demande d'ami`,
             tab: 'amis',
           }))
+        // Ami qui vient de passer en ligne (pas à chaque poll tant qu'il y reste)
+        nextFriends
+          .filter(friend => friend.online && !prev.onlineIds.has(friend.userId))
+          .forEach(friend => onNotify({
+            icon: '🟢',
+            title: 'Ami en ligne',
+            text: `${friend.pseudo} est en ligne !`,
+            tab: 'amis',
+          }))
       }
       prevSnapshotRef.current = {
         incomingIds: new Set(nextIncoming.map(r => r.userId)),
         inviteIds: new Set(nextInvites.map(i => i.roomId)),
         outgoingIds: new Set(nextOutgoing.map(r => r.userId)),
         friendIds: new Set(nextFriends.map(f => f.userId)),
+        onlineIds: nextOnlineIds,
       }
 
       setProfile(me)

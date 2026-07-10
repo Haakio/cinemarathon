@@ -379,7 +379,10 @@ export default function ProfileModal({
               <p className="profile-empty">Pas encore d'ami. Recherchez un pseudo ci-dessus !</p>
             ) : friends.map(friend => (
               <div className="friend-row" key={friend.userId}>
-                <Avatar pseudo={friend.pseudo} emoji={friend.avatarEmoji} hue={friend.avatarHue} url={friend.avatarUrl} size={34} />
+                <div className="member-avatar-wrap">
+                  <Avatar pseudo={friend.pseudo} emoji={friend.avatarEmoji} hue={friend.avatarHue} url={friend.avatarUrl} size={34} />
+                  <span className={`member-status ${friend.online ? 'online' : ''}`} />
+                </div>
                 <div className="friend-name">{friend.pseudo}</div>
                 <div className="friend-actions">
                   <button className="friend-decline" onClick={() => social.removeFriend(friend.userId)}>Retirer</button>

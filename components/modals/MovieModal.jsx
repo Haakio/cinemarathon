@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Modal from './Modal'
+import { api } from '../../utils/api'
 import { TYPE_META } from '../../utils/constants'
 import { formatDate, formatMinutes } from '../../utils/format'
 import { getRuntime } from '../../utils/stats'
@@ -9,8 +10,52 @@ import { getRuntime } from '../../utils/stats'
  * plateforme, et toutes les notes/commentaires des membres.
  * N'utilise que les données déjà en mémoire.
  */
-export default function MovieModal({ item, watched, currentUser, isAdmin, onClose, onWatch, onDeleteReview }) {
+export default function MovieModal({
+  item, watched, currentUser, isAdmin, onClose, onWatch, onDeleteReview,
+  canManage = false, currentRoomId, loadData, showToast,
+}) {
   const meta = TYPE_META[item.type] || TYPE_META.film
+  const [fillingSynopsis, setFillingSynopsis] = useState(false)
+
+  async function fillSynopsisFromTmdb() {
+    setFillingSynopsis(true)
+    try {
+      const expectedMediaType = item.type === 'film' ? 'movie' : 'tv'
+      let mediaType = expectedMediaType
+      let tmdbId = item.tmdb_id || ''
+
+      if (!tmdbId) {
+        const { results } = await api('GET', `/auth/tmdb?query=${encodeURIComponent(item.title)}`)
+        const best = results?.find(r => r.mediaType === expectedMediaType) || results?.[0]
+        if (!best) { showToast?.('Aucune correspondance trouvée sur TMDB.'); setFillingSynopsis(false); return }
+        mediaType = best.mediaType
+        tmdbId = best.tmdbId
+      }
+
+      const { details: d } = await api('GET', `/auth/tmdb?mediaType=${mediaType}&tmdbId=${tmdbId}`)
+      await api('PUT', `/auth/watchlist/${item.id}`, {
+        roomId: currentRoomId,
+        title: item.title,
+        type: item.type,
+        poster: item.poster || d.poster,
+        year: item.year || d.year,
+        platform: item.platform || '',
+        watchUrl: item.watch_url || '',
+        synopsis: d.synopsis,
+        runtime: d.runtime,
+        genres: d.genres,
+        tmdbId: String(d.tmdbId),
+        backdrop: d.backdrop,
+        cast: d.cast,
+        releaseDate: d.releaseDate || '',
+      })
+      showToast?.('Synopsis rempli via TMDB ✓')
+      loadData?.()
+    } catch (e) {
+      showToast?.('TMDB : ' + e.message)
+    }
+    setFillingSynopsis(false)
+  }
 
   const cast = useMemo(() => {
     try {
@@ -70,10 +115,16 @@ export default function MovieModal({ item, watched, currentUser, isAdmin, onClos
           </div>
         )}
 
-        {item.synopsis && (
+        {item.synopsis ? (
           <div className="movie-modal-section">
             <h4>Synopsis</h4>
             <p>{item.synopsis}</p>
+          </div>
+        ) : canManage && (
+          <div className="movie-modal-section">
+            <button className="btn-add" style={{ width: 'auto' }} onClick={fillSynopsisFromTmdb} disabled={fillingSynopsis}>
+              {fillingSynopsis ? 'Récupération...' : '🔎 Remplir le synopsis via TMDB'}
+            </button>
           </div>
         )}
 

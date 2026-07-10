@@ -51,6 +51,7 @@ import AppealChat from '../components/widgets/AppealChat'
 import { api, clearSession, getStoredUser, getToken, saveSession } from '../utils/api'
 import { VIEWS } from '../utils/constants'
 import { sortByMode } from '../lib/mcuChrono'
+import { getNextItem } from '../utils/stats'
 
 /**
  * Orchestrateur de l'application.
@@ -290,7 +291,14 @@ export default function App() {
   const setListSort = useCallback(value => {
     setListSortState(value)
     localStorage.setItem(`cm_sort_${currentRoomId}`, value)
-  }, [currentRoomId])
+    // Bascule "Regarder" sur le premier titre PAS ENCORE VU dans ce nouvel
+    // ordre — pas sur le tout premier si on a déjà avancé dans le marathon.
+    const reordered = sortByMode(watchlist, value)
+    const nextItem = getNextItem(reordered, seenSource)
+    const idx = nextItem ? reordered.findIndex(w => w.id === nextItem.id) : 0
+    setWatchIdx(idx)
+    if (reordered[idx]) localStorage.setItem(`cm_watch_item_${currentRoomId}`, reordered[idx].id)
+  }, [currentRoomId, watchlist, seenSource])
 
   // Liste utilisée par "Regarder" : le marathon dans l'ordre actuellement
   // choisi (chronologique ou MCU), pour que le premier film proposé change
@@ -641,6 +649,7 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 watchlist={watchlist}
+                watchOrder={watchOrderList}
                 watched={watched}
                 seenSource={seenSource}
                 availability={availability}
@@ -653,6 +662,7 @@ export default function App() {
                 onWatch={goWatch}
                 onOpenDetails={openDetails}
                 avatarMap={social.avatarMap}
+                friends={social.friends}
                 voteApi={voteApi}
                 onInvite={() => setInviteOpen(true)}
               />
@@ -775,6 +785,10 @@ export default function App() {
           onClose={() => setSelectedItem(null)}
           onWatch={goWatch}
           onDeleteReview={deleteReview}
+          canManage={canManageCurrentRoom}
+          currentRoomId={currentRoomId}
+          loadData={loadData}
+          showToast={showToast}
         />
       )}
       {inviteOpen && (

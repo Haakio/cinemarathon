@@ -13,8 +13,8 @@ import { buildActivity, buildMembers, getNextItem, getProgress } from '../../uti
  * Tout est dérivé des données déjà chargées — zéro requête supplémentaire.
  */
 export default function DashboardView({
-  currentRoom, currentUser, watchlist, watched, seenSource, availability, chatMessages, roomMembers,
-  goal, onSaveGoal, onDeleteGoal, canManageGoal, onWatch, onOpenDetails, avatarMap, voteApi, onInvite,
+  currentRoom, currentUser, watchlist, watchOrder, watched, seenSource, availability, chatMessages, roomMembers,
+  goal, onSaveGoal, onDeleteGoal, canManageGoal, onWatch, onOpenDetails, avatarMap, friends, voteApi, onInvite,
 }) {
   // seenSource = watched complet en room privée, ou seulement MES visionnages
   // en room publique (progression personnelle). Les membres/activité gardent
@@ -23,9 +23,13 @@ export default function DashboardView({
   const progress = useMemo(() => getProgress(watchlist, seen), [watchlist, seen])
   const seenSetForVote = useMemo(() => new Set(seen.map(w => w.item_id)), [seen])
 
-  // Prochain film : le gagnant d'un vote clos (tant qu'il n'est pas vu)
-  // est prioritaire sur l'ordre du marathon. En cas d'égalité, on attend
-  // que l'admin ait laissé Jimmy trancher (flag serveur — pas de spoiler).
+  // Prochain film : suit l'ordre/filtre actuellement choisi dans "Liste"
+  // (chronologique ou MCU) — garantit aussi que "Démarrer la séance" trouve
+  // toujours le titre dans "Regarder" (même liste que goWatch utilise).
+  // Le gagnant d'un vote clos (tant qu'il n'est pas vu) est prioritaire,
+  // MAIS seulement s'il fait partie de cet ordre courant. En cas d'égalité,
+  // on attend que l'admin ait laissé Jimmy trancher (flag serveur — pas de spoiler).
+  const order = watchOrder || watchlist
   const nextItem = useMemo(() => {
     const vote = voteApi?.vote
     const winnerId = vote?.status === 'closed' ? vote.winner_item_id : null
@@ -34,11 +38,11 @@ export default function DashboardView({
       try { return !JSON.parse(vote.tie_break).revealed } catch { return false }
     })()
     if (winnerId && !jimmyPending && !seenSetForVote.has(winnerId)) {
-      const winner = watchlist.find(i => i.id === winnerId)
+      const winner = order.find(i => i.id === winnerId)
       if (winner) return winner
     }
-    return getNextItem(watchlist, seen)
-  }, [watchlist, seen, voteApi, seenSetForVote])
+    return getNextItem(order, seen)
+  }, [order, seen, voteApi, seenSetForVote])
   const members = useMemo(
     () => buildMembers({ watchlist, watched, availability, chatMessages, roomMembers, currentUser }),
     [watchlist, watched, availability, chatMessages, roomMembers, currentUser]
@@ -70,7 +74,7 @@ export default function DashboardView({
         </div>
         <div className="dash-side">
           <ActivityFeed activity={activity} />
-          <MembersCard members={members} avatarMap={avatarMap} />
+          <MembersCard members={members} avatarMap={avatarMap} friends={friends} />
         </div>
       </div>
     </>

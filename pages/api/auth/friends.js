@@ -25,6 +25,7 @@ export default async function handler(req, res) {
           avatarEmoji: row[`${side}_avatar_emoji`] || '',
           avatarHue: row[`${side}_avatar_hue`] ?? null,
           avatarUrl: row[`${side}_avatar_url`] || '',
+          lastSeen: row[`${side}_last_seen`] || null,
           since: row.created_at,
         }
       }
