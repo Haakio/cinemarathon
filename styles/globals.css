@@ -437,7 +437,9 @@ html {
   width: 240px; flex-shrink: 0; position: sticky; top: 64px;
   height: calc(100vh - 64px); overflow-y: auto;
   border-right: 1px solid var(--border);
-  padding: 20px 14px; display: flex; flex-direction: column; gap: 18px;
+  /* padding-bottom généreux : la bulle "Retour" flotte en fixed par-dessus
+     en bas à gauche, sans ça elle recouvre les liens légaux du footer. */
+  padding: 20px 14px 76px; display: flex; flex-direction: column; gap: 18px;
   background: var(--bg);
 }
 .sidebar-room {
