@@ -505,11 +505,11 @@ export default function App() {
   // ── Rendu ───────────────────────────────────────────────
   const head = (
     <Head>
-      <title>Cinémarathon — Organisez vos marathons de films entre amis</title>
+      <title>Cinémarathon — Le site pour organiser un marathon de films entre amis</title>
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta
         name="description"
-        content="Créez votre salle, ajoutez vos films, votez pour la prochaine séance, suivez votre progression et débattez entre amis. Le site qui transforme vos soirées en vrais marathons ciné."
+        content="Le site gratuit pour organiser un marathon de films, séries ou animes entre amis : marathon Marvel, Harry Potter, Star Wars... Listes, ordre chronologique, votes, calendrier de dispos et notes."
       />
       {/* Aperçus Google / Discord / WhatsApp */}
       <meta property="og:type" content="website" />
@@ -523,6 +523,26 @@ export default function App() {
       <meta name="twitter:card" content="summary_large_image" />
       {/* Adresse officielle : évite que le domaine vercel.app soit indexé à la place */}
       <link rel="canonical" href="https://xn--cinmarathon-dbb.com/" />
+      {/* Données structurées : aide Google à comprendre le site (rich results potentiels) */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'WebSite',
+            name: 'Cinémarathon',
+            url: 'https://xn--cinmarathon-dbb.com/',
+          },
+          {
+            '@type': 'WebApplication',
+            name: 'Cinémarathon',
+            url: 'https://xn--cinmarathon-dbb.com/',
+            description: 'Le site gratuit pour organiser un marathon de films, séries ou animes entre amis : listes, ordre chronologique, votes, calendrier de dispos et notes.',
+            applicationCategory: 'LifestyleApplication',
+            operatingSystem: 'Web',
+            offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+          },
+        ],
+      }) }} />
     </Head>
   )
 

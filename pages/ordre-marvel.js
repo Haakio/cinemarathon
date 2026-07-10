@@ -98,6 +98,18 @@ export default function OrdreMarvel() {
         <meta property="og:title" content="Ordre chronologique des films Marvel (MCU)" />
         <meta property="og:description" content="La liste complète pour votre marathon Marvel : ordre chronologique et ordre de sortie." />
         <link rel="canonical" href="https://xn--cinmarathon-dbb.com/ordre-marvel" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: 'Ordre chronologique des films Marvel (MCU)',
+          itemListOrder: 'https://schema.org/ItemListOrderAscending',
+          numberOfItems: ORDRE_CHRONOLOGIQUE.length,
+          itemListElement: ORDRE_CHRONOLOGIQUE.map((title, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: title,
+          })),
+        }) }} />
       </Head>
 
       <main className="seo-page">
@@ -133,6 +145,9 @@ export default function OrdreMarvel() {
             votez pour la prochaine séance et notez chaque film. Gratuit.
           </p>
           <a className="btn-play" href="/">Créer mon marathon</a>
+          <p className="seo-footer-links">
+            <a href="/marathon-marvel">Comment organiser un marathon Marvel entre amis</a>
+          </p>
         </section>
       </main>
     </>

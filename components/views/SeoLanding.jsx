@@ -42,8 +42,10 @@ export default function SeoLanding() {
 
       <p className="seo-cta">
         Créez votre compte gratuitement et lancez votre premier <strong>marathon ciné entre amis</strong> —
-        ou consultez notre <a href="/ordre-marvel">ordre chronologique des films Marvel</a> pour
-        préparer votre marathon MCU.
+        consultez notre <a href="/organiser-marathon-film">guide pour organiser un marathon de films entre amis</a>,
+        ou préparez votre marathon MCU avec notre page dédiée{' '}
+        <a href="/marathon-marvel">organiser un marathon Marvel</a> et{' '}
+        <a href="/ordre-marvel">l'ordre chronologique des films Marvel</a>.
       </p>
 
       <p className="seo-footer-links">
