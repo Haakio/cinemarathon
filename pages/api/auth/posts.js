@@ -74,12 +74,14 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      const { id, roomId = 'marvel' } = req.body
+      const { id } = req.body
       if (!id) return res.status(400).json({ error: 'id requis' })
-      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
 
       const post = await getFilmPost(id)
       if (!post) return res.status(404).json({ error: 'Post introuvable' })
+      // Sécurité : vérifier l'accès sur la room RÉELLE du post, jamais sur un
+      // roomId envoyé par le client.
+      if (!await hasRoomAccess(post.room_id, user.id)) return res.status(403).json({ error: 'Room privee' })
 
       const isOwner = post.user_id === user.id
       const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)

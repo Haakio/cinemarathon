@@ -1,4 +1,4 @@
-import { getUserById, getWatched, getHiddenRatingUserIds, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
+import { getUserById, getWatched, getWatchedEntry, getHiddenRatingUserIds, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
 import { moderateOrBlock, rejectIfSuspended } from '../../../../../lib/guard'
 
@@ -48,15 +48,15 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    const { id, roomId = 'marvel' } = req.body
+    const { id } = req.body
     if (!id) return res.status(400).json({ error: 'id requis' })
 
     try {
-      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
-      const entries = await getWatched()
-      const entry = entries.find(e => e.id === id)
-
+      const entry = await getWatchedEntry(id)
       if (!entry) return res.status(404).json({ error: 'Avis introuvable' })
+      // Sécurité : vérifier l'accès sur la room RÉELLE de l'avis, jamais sur
+      // un roomId envoyé par le client.
+      if (!await hasRoomAccess(entry.room_id || 'marvel', user.id)) return res.status(403).json({ error: 'Room privee' })
 
       const isOwner = entry.user_id === user.id
       const isAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)

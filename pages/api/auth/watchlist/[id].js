@@ -1,4 +1,4 @@
-import { deleteWatchlistItem, getWatchlist, hasRoomAccess, hasRoomManageAccess, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
+import { deleteWatchlistItem, getWatchlist, getWatchlistItemRoomId, hasRoomAccess, hasRoomManageAccess, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function isValidWatchUrl(url) { return !url || /^https?:\/\//i.test(url) }
@@ -13,11 +13,16 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Non autorise' })
   const { id } = req.query
 
+  // Sécurité : les droits se vérifient TOUJOURS sur la room réelle de l'item
+  // (jamais sur un roomId envoyé par le client) — sinon n'importe qui gérant
+  // sa propre room pourrait modifier/supprimer un item d'une autre room.
+  const realRoomId = await getWatchlistItemRoomId(id)
+  if (!realRoomId) return res.status(404).json({ error: 'Introuvable' })
+
   if (req.method === 'DELETE') {
-    const { roomId = 'marvel' } = req.body || {}
     try {
-      if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
-      if (!await canManage(roomId, user)) return res.status(403).json({ error: 'Interdit' })
+      if (!await hasRoomAccess(realRoomId, user.id)) return res.status(403).json({ error: 'Room privee' })
+      if (!await canManage(realRoomId, user)) return res.status(403).json({ error: 'Interdit' })
       await deleteWatchlistItem(id)
       return res.status(200).json({ ok: true })
     } catch (err) {
@@ -27,7 +32,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
-    const { roomId = 'marvel', dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast, releaseDate } = req.body
+    const { dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast, releaseDate } = req.body
+    const roomId = realRoomId
 
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })

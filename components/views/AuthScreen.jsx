@@ -109,7 +109,7 @@ export default function AuthScreen({ onAuthed }) {
         <div className="form-group">
           <label>{tab === 'reset' ? 'Nouveau mot de passe' : 'Mot de passe'}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder={tab === 'login' ? '••••••••' : 'Au moins 4 caractères'} onKeyDown={onKey} />
+            placeholder={tab === 'login' ? '••••••••' : 'Au moins 8 caractères'} onKeyDown={onKey} />
         </div>
 
         {(tab === 'register' || tab === 'reset') && (

@@ -2,7 +2,10 @@ import { sql } from '@vercel/postgres'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
-  if (req.query.secret !== process.env.SETUP_SECRET) {
+  // Comparaison stricte contre une valeur qui DOIT exister : si SETUP_SECRET
+  // n'est pas configuré, on refuse tout plutôt que de laisser
+  // `undefined !== undefined` (=== false) ouvrir l'accès par erreur.
+  if (!process.env.SETUP_SECRET || req.query.secret !== process.env.SETUP_SECRET) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 

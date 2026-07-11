@@ -14,8 +14,8 @@ export default async function handler(req, res) {
   if (!pseudo?.trim() || !code?.trim() || !newPassword) {
     return res.status(400).json({ error: 'Champs manquants' })
   }
-  if (newPassword.length < 4) {
-    return res.status(400).json({ error: 'Mot de passe trop court (min 4 caractères)' })
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Mot de passe trop court (min 8 caractères)' })
   }
 
   try {
