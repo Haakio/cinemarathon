@@ -111,6 +111,8 @@ const PATHS = {
       <path d="M10.5 7l1.2 1.2 2.3-2.4" />
     </>
   ),
+  // Mes notes (toutes rooms)
+  star: <path d="M12 2.5l2.9 6.4 7 .7-5.3 4.7 1.6 6.9-6.2-3.7-6.2 3.7 1.6-6.9-5.3-4.7 7-.7L12 2.5z" />,
   // Notifications (réserve)
   bell: (
     <>

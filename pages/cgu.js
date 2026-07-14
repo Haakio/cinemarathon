@@ -29,8 +29,8 @@ export default function CGU() {
         <section>
           <h2>Âge minimum et inscription</h2>
           <p>
-            L'inscription est réservée aux personnes âgées d'au moins 15 ans.
-            En créant un compte, vous certifiez avoir au moins 15 ans. Vous êtes
+            L'inscription est réservée aux personnes âgées d'au moins 16 ans.
+            En créant un compte, vous certifiez avoir au moins 16 ans. Vous êtes
             responsable de la confidentialité de votre mot de passe et de toute
             activité effectuée depuis votre compte.
           </p>

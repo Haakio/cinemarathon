@@ -19,6 +19,7 @@ const INSIGHT_ITEMS = [
   { id: VIEWS.DISCUSSIONS, icon: 'message', label: 'Discussions' },
   { id: VIEWS.STATS, icon: 'chart', label: 'Statistiques' },
   { id: VIEWS.CLASSEMENT, icon: 'crown', label: 'Classement' },
+  { id: VIEWS.MES_NOTES, icon: 'star', label: 'Mes notes' },
 ]
 
 export default function Sidebar({ view, onNavigate, currentRoom, memberCount, canManage, open, onClose, voteBadge = false, isSiteAdmin = false, modCount = 0 }) {

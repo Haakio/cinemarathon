@@ -24,6 +24,7 @@ import SeenView from '../components/views/SeenView'
 import CalendarView from '../components/views/CalendarView'
 import StatsView from '../components/views/StatsView'
 import LeaderboardView from '../components/views/LeaderboardView'
+import MyRatingsView from '../components/views/MyRatingsView'
 import AdminView from '../components/views/AdminView'
 import DiscussionsView from '../components/views/DiscussionsView'
 import VoteView from '../components/views/VoteView'
@@ -740,6 +741,9 @@ export default function App() {
                 chatMessages={chat.chatMessages}
                 avatarMap={social.avatarMap}
               />
+            )}
+            {view === VIEWS.MES_NOTES && (
+              <MyRatingsView showToast={showToast} />
             )}
             {view === VIEWS.DISCUSSIONS && (
               <DiscussionsView

@@ -61,6 +61,7 @@ export const VIEWS = {
   STATS: 'stats',
   CLASSEMENT: 'classement',
   DISCUSSIONS: 'discussions',
+  MES_NOTES: 'mesnotes',
   ADMIN: 'admin',
   MODERATION: 'moderation',
   PARAMETRES: 'parametres',

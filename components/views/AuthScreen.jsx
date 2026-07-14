@@ -29,7 +29,7 @@ export default function AuthScreen({ onAuthed }) {
   async function submitAuth() {
     if (!pseudo.trim() || !password) { setError('Remplissez tous les champs.'); return }
     if (tab === 'register' && password !== confirm) { setError('Les mots de passe ne correspondent pas.'); return }
-    if (tab === 'register' && !acceptTerms) { setError('Vous devez accepter les CGU et confirmer avoir au moins 15 ans.'); return }
+    if (tab === 'register' && !acceptTerms) { setError('Vous devez accepter les CGU et confirmer avoir au moins 16 ans.'); return }
     setLoading(true)
     setError('')
     try {
@@ -124,7 +124,7 @@ export default function AuthScreen({ onAuthed }) {
           <label className="auth-terms">
             <input type="checkbox" checked={acceptTerms} onChange={e => setAcceptTerms(e.target.checked)} />
             <span>
-              J'ai au moins 15 ans et j'accepte les{' '}
+              J'ai au moins 16 ans et j'accepte les{' '}
               <a href="/cgu" target="_blank" rel="noopener noreferrer">CGU</a> et la{' '}
               <a href="/confidentialite" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>.
             </span>
