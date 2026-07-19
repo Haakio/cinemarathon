@@ -1776,39 +1776,41 @@ html {
   .cal-board { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 860px) {
-  .topbar { padding: 0 14px; gap: 10px; }
-  .topbar-burger { display: flex; align-items: center; justify-content: center; }
-  .topbar-logo { font-size: 16px; }
-  .user-name { display: none; }
-  .global-search { max-width: none; }
+/* Piloté en JS (classe posée par le script synchrone de _document.js),
+   PAS en @media : contourne un bug de Chrome où l'évaluation des @media
+   peut rester calée sur l'ancienne largeur après un F5 avec DevTools ancré
+   sur le côté. Même seuil qu'avant (860px), juste une source différente. */
+html.narrow-viewport .topbar { padding: 0 14px; gap: 10px; }
+html.narrow-viewport .topbar-burger { display: flex; align-items: center; justify-content: center; }
+html.narrow-viewport .topbar-logo { font-size: 16px; }
+html.narrow-viewport .user-name { display: none; }
+html.narrow-viewport .global-search { max-width: none; }
 
-  .sidebar {
-    position: fixed; left: 0; top: 64px; bottom: 0; height: auto; z-index: 250;
-    background: var(--bg2); transform: translateX(-100%);
-    transition: transform 0.35s var(--ease); box-shadow: var(--shadow-pop);
-  }
-  .sidebar.open { transform: translateX(0); }
-  .sidebar-backdrop {
-    display: block; position: fixed; inset: 64px 0 0 0; z-index: 240;
-    background: rgba(0, 0, 0, 0.6); animation: fadeIn 0.25s ease both;
-  }
-
-  .content { padding: 20px 16px 90px; }
-  .view-head h1 { font-size: 25px; }
-  .hero-content { padding: 22px; }
-  .movies-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-  .next-card { flex-direction: row; }
-  .movie-modal-head { flex-direction: column; gap: 12px; }
-  .movie-modal-poster, .movie-modal-poster-ph { margin-bottom: 0; width: 100px; }
-  .movie-modal-content { padding: 20px; }
-  .podium { gap: 8px; }
-  .room-bar { padding: 10px 14px; }
-  .post-compose-row { flex-direction: column; }
-  .post-film-select { width: 100%; }
-  .profile-tabs button { font-size: 11px; padding: 8px 4px; }
-  .hero-invite { position: static; margin-top: 16px; display: inline-block; }
+html.narrow-viewport .sidebar {
+  position: fixed; left: 0; top: 64px; bottom: 0; height: auto; z-index: 250;
+  background: var(--bg2); transform: translateX(-100%);
+  transition: transform 0.35s var(--ease); box-shadow: var(--shadow-pop);
 }
+html.narrow-viewport .sidebar.open { transform: translateX(0); }
+html.narrow-viewport .sidebar-backdrop {
+  display: block; position: fixed; inset: 64px 0 0 0; z-index: 240;
+  background: rgba(0, 0, 0, 0.6); animation: fadeIn 0.25s ease both;
+}
+
+html.narrow-viewport .content { padding: 20px 16px 90px; }
+html.narrow-viewport .view-head h1 { font-size: 25px; }
+html.narrow-viewport .hero-content { padding: 22px; }
+html.narrow-viewport .movies-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+html.narrow-viewport .next-card { flex-direction: row; }
+html.narrow-viewport .movie-modal-head { flex-direction: column; gap: 12px; }
+html.narrow-viewport .movie-modal-poster, html.narrow-viewport .movie-modal-poster-ph { margin-bottom: 0; width: 100px; }
+html.narrow-viewport .movie-modal-content { padding: 20px; }
+html.narrow-viewport .podium { gap: 8px; }
+html.narrow-viewport .room-bar { padding: 10px 14px; }
+html.narrow-viewport .post-compose-row { flex-direction: column; }
+html.narrow-viewport .post-film-select { width: 100%; }
+html.narrow-viewport .profile-tabs button { font-size: 11px; padding: 8px 4px; }
+html.narrow-viewport .hero-invite { position: static; margin-top: 16px; display: inline-block; }
 
 @media (max-width: 520px) {
   .vu-card { flex-direction: column; }

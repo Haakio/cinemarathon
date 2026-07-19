@@ -1,9 +1,11 @@
 import Head from 'next/head'
+import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 // Hooks (logique data, comportement identique à l'ancienne version)
 import { usePageVisible } from '../hooks/usePageVisible'
 import { useIdle } from '../hooks/useIdle'
+import { useUrlSync } from '../hooks/useUrlSync'
 import { useMarathon } from '../hooks/useMarathon'
 import { useChat } from '../hooks/useChat'
 import { useSocial } from '../hooks/useSocial'
@@ -61,6 +63,11 @@ import { getNextItem } from '../utils/stats'
  * partagées entre toutes les vues — zéro requête dupliquée.
  */
 export default function App() {
+  // Ce composant est partagé entre "/" (SEO, indexable) et le catch-all
+  // /{room}/{vue} (vues d'appli derrière connexion — jamais à indexer).
+  const router = useRouter()
+  const isRoomRoute = router.pathname !== '/'
+
   // ── Session ─────────────────────────────────────────────
   const [mounted, setMounted] = useState(false)
   const [authed, setAuthed] = useState(false)
@@ -351,6 +358,10 @@ export default function App() {
     setWatchIdx(0)
   }
 
+  // Liens partageables : URL synchronisée avec la room + vue courantes
+  // (F5 revient au même endroit, deep-link direct vers /{room}/{vue}).
+  const { ready: urlSyncReady } = useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView })
+
   async function deleteReview(id) {
     if (!(await askConfirm({ title: 'Supprimer cet avis', message: 'Cette note et ce commentaire seront définitivement supprimés.', confirmLabel: 'Supprimer', danger: true }))) return
     try {
@@ -532,6 +543,9 @@ export default function App() {
       <meta name="twitter:card" content="summary_large_image" />
       {/* Adresse officielle : évite que le domaine vercel.app soit indexé à la place */}
       <link rel="canonical" href="https://xn--cinmarathon-dbb.com/" />
+      {/* Les URLs /{room}/{vue} sont des vues d'appli derrière connexion (liens
+          partageables entre membres) — jamais du contenu à indexer. */}
+      {isRoomRoute && <meta name="robots" content="noindex, nofollow" />}
       {/* Données structurées : aide Google à comprendre le site (rich results potentiels) */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
         '@context': 'https://schema.org',
@@ -573,6 +587,18 @@ export default function App() {
       {head}
       <AuthScreen onAuthed={onAuthed} />
       <SeoLanding />
+    </>
+  )
+
+  // Le temps de résoudre un deep-link (ex: /marvel/calendrier) : garde le
+  // splash affiché plutôt que de flasher "Vue d'ensemble" avant de basculer
+  // sur la vraie vue demandée par l'URL.
+  if (!urlSyncReady) return (
+    <>
+      {head}
+      <div className="boot-splash">
+        <div className="boot-splash-logo">CINÉMARATHON</div>
+      </div>
     </>
   )
 
