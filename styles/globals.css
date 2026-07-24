@@ -1767,6 +1767,37 @@ html {
   padding: 9px 20px; font-size: 13px; font-weight: 700; white-space: nowrap;
 }
 
+/* Annonce du serveur Discord */
+.discord-modal { max-width: 440px; overflow: hidden; }
+.discord-hero {
+  display: flex; align-items: center; justify-content: center;
+  padding: 36px 0 30px; color: #fff;
+  background: linear-gradient(135deg, #5865f2 0%, #4752c4 60%, #3c45a5 100%);
+  position: relative;
+}
+.discord-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.18), transparent 55%);
+  pointer-events: none;
+}
+.discord-hero svg { filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.35)); }
+.discord-body { text-align: center; }
+.discord-body .kicker { color: #8891f2; }
+.discord-body h2 { font-size: 24px; margin: 8px 0 12px; }
+.discord-body p { color: var(--text2); font-size: 14px; line-height: 1.65; margin-bottom: 22px; }
+.discord-join-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 20px; border-radius: 999px;
+  background: #5865f2; color: #fff; font-weight: 700; font-size: 15px;
+  text-decoration: none; transition: background 0.2s ease, transform 0.2s var(--ease);
+}
+.discord-join-btn:hover { background: #4752c4; transform: translateY(-1px); }
+.discord-later {
+  display: block; margin: 14px auto 0; background: none; border: none;
+  color: var(--text3); font-size: 13px; text-decoration: underline; cursor: pointer;
+}
+.discord-later:hover { color: var(--text2); }
+
 /* ════════════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════════════ */

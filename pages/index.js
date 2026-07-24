@@ -39,6 +39,7 @@ import RoomSettingsModal from '../components/modals/RoomSettingsModal'
 import RoomsHubModal from '../components/modals/RoomsHubModal'
 import InviteModal from '../components/modals/InviteModal'
 import WelcomeModal from '../components/modals/WelcomeModal'
+import DiscordModal from '../components/modals/DiscordModal'
 import ConfirmModal from '../components/modals/ConfirmModal'
 import ProfileModal from '../components/modals/ProfileModal'
 import ChatConsentModal from '../components/modals/ChatConsentModal'
@@ -88,6 +89,7 @@ export default function App() {
   const [roomSettingsOpen, setRoomSettingsOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [welcomeOpen, setWelcomeOpen] = useState(false)
+  const [discordOpen, setDiscordOpen] = useState(false)
   const [adminPanelOpen, setAdminPanelOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
@@ -247,6 +249,17 @@ export default function App() {
   function closeWelcome() {
     if (currentUser?.id) localStorage.setItem(`cm_welcome_${currentUser.id}`, '1')
     setWelcomeOpen(false)
+  }
+
+  // Annonce du serveur Discord : une seule fois par utilisateur
+  useEffect(() => {
+    if (!authed || !currentUser?.id) return
+    if (localStorage.getItem(`cm_discord_${currentUser.id}`) !== '1') setDiscordOpen(true)
+  }, [authed, currentUser])
+
+  function closeDiscord() {
+    if (currentUser?.id) localStorage.setItem(`cm_discord_${currentUser.id}`, '1')
+    setDiscordOpen(false)
   }
 
   // Garde d'accès admin (comportement conservé)
@@ -908,6 +921,9 @@ export default function App() {
           onClose={closeWelcome}
         />
       )}
+      {/* L'annonce Discord attend que le mot de bienvenue soit fermé
+          (nouveaux inscrits : pas deux popups empilées) */}
+      {discordOpen && !welcomeOpen && <DiscordModal onClose={closeDiscord} />}
       {adminPanelOpen && (
         <AdminPanelModal
           social={social}
