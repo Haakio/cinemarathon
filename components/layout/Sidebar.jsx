@@ -25,6 +25,11 @@ const INSIGHT_ITEMS = [
 export default function Sidebar({ view, onNavigate, currentRoom, memberCount, canManage, open, onClose, voteBadge = false, isSiteAdmin = false, modCount = 0 }) {
   const navigate = id => { onNavigate(id); onClose?.() }
 
+  // Room publique : pas de calendrier (organiser une séance commune entre
+  // des dizaines d'inconnus n'a pas de sens) — index.js garde la vue aussi.
+  const isPublicRoom = currentRoom.id === 'marvel' || currentRoom.is_private === false
+  const mainItems = isPublicRoom ? MAIN_ITEMS.filter(item => item.id !== VIEWS.CALENDRIER) : MAIN_ITEMS
+
   const renderItem = item => (
     <button
       key={item.id}
@@ -61,7 +66,7 @@ export default function Sidebar({ view, onNavigate, currentRoom, memberCount, ca
 
         <nav className="sidebar-nav">
           <div className="sidebar-section">Marathon</div>
-          {MAIN_ITEMS.map(renderItem)}
+          {mainItems.map(renderItem)}
           <div className="sidebar-section">Analyse</div>
           {INSIGHT_ITEMS.map(renderItem)}
           {(canManage || isSiteAdmin) && (

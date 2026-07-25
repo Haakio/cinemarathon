@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import MovieCard from '../cards/MovieCard'
 import { LIST_FILTERS } from '../../utils/constants'
 import { getSeenItemIds } from '../../utils/stats'
-import { sortByMode } from '../../lib/mcuChrono'
+import { mcuRank, sortByMode } from '../../lib/mcuChrono'
 
 /**
  * Liste du marathon : grille de cartes premium avec filtres.
@@ -10,12 +10,14 @@ import { sortByMode } from '../../lib/mcuChrono'
  */
 /**
  * Ordre de la liste : "chronologique" dans Marvel (l'ordre de l'histoire),
- * sinon "marathon". Marvel gagne aussi "MCU (chrono)" : uniquement les
- * titres du MCU, dans l'ordre de la chronologie officielle.
+ * sinon "marathon". Le mode "MCU (chrono)" (uniquement les titres du MCU,
+ * dans l'ordre de la chronologie officielle) est proposé dès que la liste
+ * contient assez de films du MCU — donc aussi dans les copies privées de
+ * la room Marvel, pas seulement dans l'originale.
  */
-const sortOptions = isMarvel => [
+const sortOptions = (isMarvel, hasMcu) => [
   ['marathon', isMarvel ? 'Ordre chronologique' : 'Ordre marathon'],
-  ...(isMarvel ? [['mcu', 'MCU (chrono)']] : []),
+  ...(hasMcu ? [['mcu', 'MCU (chrono)']] : []),
   ['release-asc', 'Sortie ↑'],
   ['release-desc', 'Sortie ↓'],
 ]
@@ -49,6 +51,14 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
     return map
   }, [watched, currentUser])
 
+  // "MCU (chrono)" proposé si la liste contient assez de films du MCU
+  // (seuil à 5 : évite d'afficher le mode dans une room qui n'a qu'un
+  // ou deux Avengers au milieu d'autres films).
+  const hasMcu = useMemo(
+    () => watchlist.filter(item => mcuRank(item.title) >= 0).length >= 5,
+    [watchlist]
+  )
+
   return (
     <>
       <div className="view-head anim-up">
@@ -68,7 +78,7 @@ export default function ListView({ currentRoom, watchlist, watched, seenSource, 
           </button>
         ))}
         <span className="filters-divider" />
-        {sortOptions(currentRoom.id === 'marvel').map(([value, label]) => (
+        {sortOptions(currentRoom.id === 'marvel', hasMcu).map(([value, label]) => (
           <button key={value} className={`filter-btn ${sort === value ? 'active' : ''}`} onClick={() => onSetSort(value)}>
             {label}
           </button>

@@ -212,14 +212,13 @@ export default function App() {
   // Dans une room PUBLIQUE, la progression et les coches "Vu" sont
   // personnelles (sinon les inconnus se spoilent la progression entre eux).
   // Les avis restent visibles par tous dans les fiches et "Déjà vu".
-  // Les notes HÉRITÉES d'autres rooms (inherited) sont affichage seulement :
-  // elles ne comptent ni dans la progression, ni dans "Regarder", ni au
-  // classement — la room repart à zéro, mais chacun retrouve ses avis.
+  // Les notes HÉRITÉES des rooms publiques (inherited) comptent comme les
+  // autres : un film déjà noté ailleurs est bien marqué "Vu" ici aussi —
+  // la note et le statut suivent la personne (demande explicite).
   const isPublicRoom = currentRoom.id === 'marvel' || currentRoom.is_private === false
-  const realWatched = useMemo(() => watched.filter(w => !w.inherited), [watched])
   const seenSource = useMemo(
-    () => (isPublicRoom ? realWatched.filter(w => w.user_id === currentUser?.id) : realWatched),
-    [isPublicRoom, realWatched, currentUser]
+    () => (isPublicRoom ? watched.filter(w => w.user_id === currentUser?.id) : watched),
+    [isPublicRoom, watched, currentUser]
   )
 
   // ── Cycle de vie ────────────────────────────────────────
@@ -271,6 +270,12 @@ export default function App() {
   useEffect(() => {
     if (view === VIEWS.ADMIN && !canManageCurrentRoom) setView(VIEWS.LISTE)
   }, [view, canManageCurrentRoom])
+
+  // Pas de calendrier dans les rooms publiques : caler une séance commune
+  // entre des dizaines d'inconnus n'a pas de sens (et c'est le bordel).
+  useEffect(() => {
+    if (view === VIEWS.CALENDRIER && isPublicRoom) setView(VIEWS.OVERVIEW)
+  }, [view, isPublicRoom])
 
   // ── Objectif du marathon (partagé, stocké en base par room) ──
   const goal = currentRoom.goal_label && currentRoom.goal_date
@@ -793,7 +798,7 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 watchlist={watchlist}
-                watched={realWatched}
+                watched={watched}
                 availability={availability}
                 chatMessages={chat.chatMessages}
                 avatarMap={social.avatarMap}
@@ -921,7 +926,7 @@ export default function App() {
           } : null}
           onClose={() => setProfileOpen(false)}
           watchlist={watchlist}
-          watched={realWatched}
+          watched={watched}
           availability={availability}
           chatMessages={chat.chatMessages}
           chatEnabled={chat.chatEnabled}
