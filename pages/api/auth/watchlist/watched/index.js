@@ -1,4 +1,4 @@
-import { getUserById, getWatched, getWatchedEntry, getHiddenRatingUserIds, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
+import { getInheritedWatched, getUserById, getWatched, getWatchedEntry, getHiddenRatingUserIds, hasRoomAccess, upsertWatched, deleteWatched } from '../../../../../lib/db'
 import { requireAuth } from '../../../../../lib/auth'
 import { moderateOrBlock, rejectIfSuspended } from '../../../../../lib/guard'
 
@@ -12,7 +12,13 @@ export default async function handler(req, res) {
     const { roomId = 'marvel' } = req.query
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
-      const entries = await getWatched(roomId)
+      // Avis de la room + avis "hérités" des rooms publiques (la note suit
+      // la personne quand le même film est présent ici) — voir lib/db.js.
+      const [local, inherited] = await Promise.all([
+        getWatched(roomId),
+        getInheritedWatched(roomId),
+      ])
+      const entries = [...local, ...inherited]
       const hiddenUserIds = await getHiddenRatingUserIds(roomId)
       const visible = entries.filter(e => e.user_id === user.id || !hiddenUserIds.has(e.user_id))
       return res.status(200).json(visible)

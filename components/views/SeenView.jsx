@@ -79,8 +79,14 @@ export default function SeenView({ watchlist, watched, currentUser, isAdmin, onD
                           </div>
                           <div className="vu-date">Vu le {formatDate(entry.watched_at)}</div>
                           {entry.comment && <div className="vu-comment">{entry.comment}</div>}
-                          <div className="vu-user-tag">Par <b>{entry.pseudo}</b></div>
-                          {(entry.user_id === currentUser?.id || isAdmin) && (
+                          <div className="vu-user-tag">
+                            Par <b>{entry.pseudo}</b>
+                            {entry.inherited && <span className="vu-inherited" title="Avis écrit dans une room publique — il vous suit partout où ce film est présent">· note reprise d'une room publique</span>}
+                          </div>
+                          {/* Pas de suppression sur un avis hérité : il vit dans
+                              sa room d'origine, le supprimer ici le supprimerait
+                              là-bas aussi. */}
+                          {!entry.inherited && (entry.user_id === currentUser?.id || isAdmin) && (
                             <button className="btn-del-review" onClick={() => onDeleteReview(entry.id)}>
                               Supprimer l'avis
                             </button>

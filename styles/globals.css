@@ -437,6 +437,9 @@ html {
 .hub-room-copy:hover { border-color: var(--gold); color: var(--gold); }
 .hub-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 
+/* Tag "note reprise d'une room publique" (avis hérités) */
+.vu-inherited { margin-left: 5px; color: var(--text3); font-size: 11px; font-style: italic; }
+
 /* Note du formulaire de copie (room publique → privée) */
 .room-copy-note {
   font-size: 13px; color: var(--text2); line-height: 1.6;

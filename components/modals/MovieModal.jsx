@@ -170,7 +170,7 @@ export default function MovieModal({
                 <small>{formatDate(entry.watched_at)}</small>
               </div>
               {entry.comment && <div className="review-comment">« {entry.comment} »</div>}
-              {(entry.user_id === currentUser?.id || isAdmin) && (
+              {!entry.inherited && (entry.user_id === currentUser?.id || isAdmin) && (
                 <button className="btn-del-review" onClick={() => onDeleteReview(entry.id)}>Supprimer l'avis</button>
               )}
             </div>

@@ -212,10 +212,14 @@ export default function App() {
   // Dans une room PUBLIQUE, la progression et les coches "Vu" sont
   // personnelles (sinon les inconnus se spoilent la progression entre eux).
   // Les avis restent visibles par tous dans les fiches et "Déjà vu".
+  // Les notes HÉRITÉES d'autres rooms (inherited) sont affichage seulement :
+  // elles ne comptent ni dans la progression, ni dans "Regarder", ni au
+  // classement — la room repart à zéro, mais chacun retrouve ses avis.
   const isPublicRoom = currentRoom.id === 'marvel' || currentRoom.is_private === false
+  const realWatched = useMemo(() => watched.filter(w => !w.inherited), [watched])
   const seenSource = useMemo(
-    () => (isPublicRoom ? watched.filter(w => w.user_id === currentUser?.id) : watched),
-    [isPublicRoom, watched, currentUser]
+    () => (isPublicRoom ? realWatched.filter(w => w.user_id === currentUser?.id) : realWatched),
+    [isPublicRoom, realWatched, currentUser]
   )
 
   // ── Cycle de vie ────────────────────────────────────────
@@ -789,7 +793,7 @@ export default function App() {
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 watchlist={watchlist}
-                watched={watched}
+                watched={realWatched}
                 availability={availability}
                 chatMessages={chat.chatMessages}
                 avatarMap={social.avatarMap}
@@ -917,7 +921,7 @@ export default function App() {
           } : null}
           onClose={() => setProfileOpen(false)}
           watchlist={watchlist}
-          watched={watched}
+          watched={realWatched}
           availability={availability}
           chatMessages={chat.chatMessages}
           chatEnabled={chat.chatEnabled}
