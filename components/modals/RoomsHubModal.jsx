@@ -10,7 +10,7 @@ import { api } from '../../utils/api'
  */
 export default function RoomsHubModal({
   myRooms, currentRoomId, onSelectRoom, onJoinPublic,
-  onOpenJoinPrivate, onOpenCreate, onClose,
+  onOpenJoinPrivate, onOpenCreate, onOpenCopy, onClose,
 }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all') // 'all' | 'mine' | 'public'
@@ -114,6 +114,15 @@ export default function RoomsHubModal({
                   {entry.id === currentRoomId ? ' · Vous êtes ici' : ''}
                 </small>
               </div>
+              {entry.isPublic && (
+                <button
+                  className="hub-room-copy"
+                  title="Copier en room privée : même liste de films, entre potes"
+                  onClick={() => { onClose(); onOpenCopy(entry) }}
+                >
+                  <Icon name="copy" size={13} /> Copier
+                </button>
+              )}
               {entry.id === currentRoomId ? (
                 <span className="chip" style={{ color: 'var(--gold)' }}>Actuelle</span>
               ) : entry.joined ? (

@@ -428,7 +428,22 @@ html {
 .hub-room-go:hover { border-color: var(--gold); color: var(--gold); }
 .hub-room-go.join { border-color: var(--gold); color: var(--gold); }
 .hub-room-go.join:hover { background: var(--gold); color: #000; }
+.hub-room-copy {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: none; border: 1px solid var(--border); color: var(--text3); transition: all 0.2s;
+  flex-shrink: 0;
+}
+.hub-room-copy:hover { border-color: var(--gold); color: var(--gold); }
 .hub-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+/* Note du formulaire de copie (room publique → privée) */
+.room-copy-note {
+  font-size: 13px; color: var(--text2); line-height: 1.6;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 16px;
+}
+.room-copy-note b { color: var(--gold); }
 
 /* Corps : sidebar + contenu */
 .shell-body { display: flex; align-items: flex-start; }

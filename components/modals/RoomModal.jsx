@@ -10,6 +10,7 @@ export default function RoomModal({
   joinName, setJoinName, joinCode, setJoinCode, onJoin,
   newName, setNewName, newCode, setNewCode, onCreate,
   isGlobalAdmin = false, newIsPublic = false, setNewIsPublic,
+  copySource = null,
   roomMsg,
 }) {
   return (
@@ -17,15 +18,23 @@ export default function RoomModal({
       <div className="modal-body">
         <span className="kicker">Ticket d'entrée</span>
         <h2 className="display" style={{ fontSize: '24px', margin: '6px 0 18px' }}>
-          {mode === 'join' ? 'Rejoindre une room' : 'Créer une room'}
+          {copySource ? 'Copier en room privée' : mode === 'join' ? 'Rejoindre une room' : 'Créer une room'}
         </h2>
 
-        <div className="room-gate-tabs">
-          <button className={mode === 'join' ? 'active' : ''} onClick={() => onSetMode('join')}>Rejoindre</button>
-          <button className={mode === 'create' ? 'active' : ''} onClick={() => onSetMode('create')}>Créer</button>
-        </div>
+        {copySource ? (
+          <p className="room-copy-note">
+            La liste de <b>{copySource.name}</b> (films, ordre, fiches) sera
+            recopiée dans votre nouvelle room privée. Progression, avis et
+            discussions repartent à zéro — invitez vos potes avec le code.
+          </p>
+        ) : (
+          <div className="room-gate-tabs">
+            <button className={mode === 'join' ? 'active' : ''} onClick={() => onSetMode('join')}>Rejoindre</button>
+            <button className={mode === 'create' ? 'active' : ''} onClick={() => onSetMode('create')}>Créer</button>
+          </div>
+        )}
 
-        {mode === 'join' ? (
+        {mode === 'join' && !copySource ? (
           <div className="room-gate-form">
             <label>Nom de la room</label>
             <input value={joinName} onChange={e => setJoinName(e.target.value)} placeholder="SpiderVerse" />
@@ -38,7 +47,7 @@ export default function RoomModal({
           <div className="room-gate-form">
             <label>Nom de la room</label>
             <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Marathon perso" />
-            {isGlobalAdmin && (
+            {isGlobalAdmin && !copySource && (
               <label className="settings-row" style={{ marginBottom: 0 }}>
                 <span>
                   <strong>Room publique</strong>
@@ -54,7 +63,7 @@ export default function RoomModal({
                   placeholder="À donner aux invités" onKeyDown={e => e.key === 'Enter' && onCreate()} />
               </>
             )}
-            <button onClick={onCreate}>Créer la salle</button>
+            <button onClick={onCreate}>{copySource ? 'Copier la room' : 'Créer la salle'}</button>
           </div>
         )}
 

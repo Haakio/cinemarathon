@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import {
-  addRoomMember, createRoom, createRoomInvite, deleteRoom, deleteRoomInvite,
+  addAllUsersToRoom, addRoomMember, copyWatchlistToRoom, createRoom, createRoomInvite, deleteRoom, deleteRoomInvite,
   getFriendship, getPublicRooms, getRoomById, getRoomByInviteToken, getRoomByName,
   getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess, hasRoomManageAccess,
   removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomGoal, updateRoomImage, updateRoomName,
@@ -169,6 +169,44 @@ export default async function handler(req, res) {
         return res.status(200).json(room)
       }
 
+      if (action === 'copyPublic') {
+        // Copie privée d'une room publique : même liste de films (via
+        // copyWatchlistToRoom), mais room neuve — progression, avis et
+        // discussions repartent à zéro, le copieur devient owner.
+        if (!roomId) return res.status(400).json({ error: 'Room requise' })
+        const source = await getRoomById(roomId)
+        if (!source) return res.status(404).json({ error: 'Room introuvable' })
+        if (source.is_private !== false && source.id !== 'marvel') {
+          return res.status(403).json({ error: 'Seules les rooms publiques peuvent être copiées' })
+        }
+
+        if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+        if (await moderateOrBlock(res, user, [name], 'nom de room')) return
+        if (!code?.trim() || code.trim().length < 3) {
+          return res.status(400).json({ error: 'Code requis (min 3 caracteres)' })
+        }
+
+        const copy = {
+          id: uid(),
+          name: name.trim(),
+          slug: `${slugify(name.trim()) || 'room'}-${Date.now().toString(36)}`,
+          createdBy: user.id,
+          joinCodeHash: await bcrypt.hash(code.trim(), 10),
+          isPublic: false,
+        }
+        await createRoom(copy)
+        try {
+          await copyWatchlistToRoom(source.id, copy.id, user.id)
+        } catch (err) {
+          // Liste non copiée : on supprime la coquille vide plutôt que de
+          // laisser croire que la copie a réussi.
+          console.error(err)
+          try { await deleteRoom(copy.id) } catch { }
+          return res.status(500).json({ error: 'La copie de la liste a échoué, réessayez.' })
+        }
+        return res.status(201).json({ id: copy.id, name: copy.name, slug: copy.slug, created_by: copy.createdBy, can_delete: true, can_manage: true })
+      }
+
       if (action === 'join') {
         if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
         if (!code?.trim()) return res.status(400).json({ error: 'Code requis' })
@@ -206,6 +244,12 @@ export default async function handler(req, res) {
         isPublic,
       }
       await createRoom(room)
+      // Room publique : tous les comptes existants deviennent membres,
+      // comme les futurs inscrits (addUserToPublicRooms à l'inscription).
+      // Non bloquant : la room est créée même si le backfill échoue.
+      if (isPublic) {
+        try { await addAllUsersToRoom(room.id) } catch (err) { console.error(err) }
+      }
       return res.status(201).json({ id: room.id, name: room.name, slug: room.slug, created_by: room.createdBy, can_delete: true, can_manage: true })
     } catch (err) {
       console.error(err)

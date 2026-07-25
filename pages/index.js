@@ -93,6 +93,7 @@ export default function App() {
   const [adminPanelOpen, setAdminPanelOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
+  const [copySource, setCopySource] = useState(null) // room publique à copier en privée
   const [roomMsg, setRoomMsg] = useState('')
   const [newRoomName, setNewRoomName] = useState('')
   const [newRoomPublic, setNewRoomPublic] = useState(false)
@@ -389,15 +390,28 @@ export default function App() {
   // ── Actions rooms (mêmes endpoints qu'avant) ────────────
   async function createNewRoom() {
     if (!newRoomName.trim()) { setRoomMsg('Entrez un nom de room.'); return }
-    if (!newRoomPublic && !roomCode.trim()) { setRoomMsg('Entrez un code de room.'); return }
+    if ((copySource || !newRoomPublic) && !roomCode.trim()) { setRoomMsg('Entrez un code de room.'); return }
     try {
-      const room = await api('POST', '/auth/rooms', { name: newRoomName, code: roomCode, isPublic: newRoomPublic })
+      const room = copySource
+        ? await api('POST', '/auth/rooms', { action: 'copyPublic', roomId: copySource.id, name: newRoomName, code: roomCode })
+        : await api('POST', '/auth/rooms', { name: newRoomName, code: roomCode, isPublic: newRoomPublic })
       setRooms(prev => [...prev, room])
       setNewRoomName(''); setRoomCode(''); setNewRoomPublic(false); setRoomMsg('')
       setRoomPanelOpen(false)
       onSelectRoom(room.id)
-      showToast(newRoomPublic ? 'Room publique créée.' : 'Room privée créée.')
+      showToast(copySource ? `Copie privée de ${copySource.name} créée 🍿` : newRoomPublic ? 'Room publique créée.' : 'Room privée créée.')
+      setCopySource(null)
     } catch (e) { setRoomMsg(e.message) }
+  }
+
+  // Copie privée d'une room publique : ouvre le formulaire de création
+  // pré-rempli, createNewRoom bascule sur l'action copyPublic.
+  function openCopyRoom(room) {
+    setCopySource({ id: room.id, name: room.name })
+    setNewRoomName(`${room.name} — entre potes`)
+    setRoomCode(''); setNewRoomPublic(false); setRoomMsg('')
+    setRoomPanelMode('create')
+    setRoomPanelOpen(true)
   }
 
   // Lien d'invitation ?invite=TOKEN : rejoint la room après connexion,
@@ -849,16 +863,17 @@ export default function App() {
           currentRoomId={currentRoomId}
           onSelectRoom={onSelectRoom}
           onJoinPublic={joinPublicRoom}
-          onOpenJoinPrivate={() => { setRoomPanelMode('join'); setRoomMsg(''); setRoomPanelOpen(true) }}
-          onOpenCreate={() => { setRoomPanelMode('create'); setRoomMsg(''); setRoomPanelOpen(true) }}
+          onOpenJoinPrivate={() => { setCopySource(null); setRoomPanelMode('join'); setRoomMsg(''); setRoomPanelOpen(true) }}
+          onOpenCreate={() => { setCopySource(null); setRoomPanelMode('create'); setRoomMsg(''); setRoomPanelOpen(true) }}
+          onOpenCopy={openCopyRoom}
           onClose={() => setRoomsHubOpen(false)}
         />
       )}
       {roomPanelOpen && (
         <RoomModal
           mode={roomPanelMode}
-          onSetMode={mode => { setRoomPanelMode(mode); setRoomMsg('') }}
-          onClose={() => setRoomPanelOpen(false)}
+          onSetMode={mode => { setCopySource(null); setRoomPanelMode(mode); setRoomMsg('') }}
+          onClose={() => { setRoomPanelOpen(false); setCopySource(null) }}
           joinName={roomJoinName} setJoinName={setRoomJoinName}
           joinCode={roomJoinCode} setJoinCode={setRoomJoinCode}
           onJoin={joinPrivateRoom}
@@ -866,6 +881,7 @@ export default function App() {
           newCode={roomCode} setNewCode={setRoomCode}
           isGlobalAdmin={isAdmin}
           newIsPublic={newRoomPublic} setNewIsPublic={setNewRoomPublic}
+          copySource={copySource}
           onCreate={createNewRoom}
           roomMsg={roomMsg}
         />
