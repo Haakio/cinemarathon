@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Modal from './Modal'
 import Avatar from '../widgets/Avatar'
 import Icon from '../widgets/Icon'
 import AppealChat from '../widgets/AppealChat'
 import { api } from '../../utils/api'
+import { formatDate, formatRelative } from '../../utils/format'
 
 /**
  * Panel Modération — RÉSERVÉ À L'ADMIN DU SITE (bouton à côté du profil).
@@ -14,6 +15,31 @@ import { api } from '../../utils/api'
 export default function AdminPanelModal({ social, isAdmin = false, showToast, askConfirm, onGoModeration, onClose }) {
   // ── Conversation avec un compte suspendu ────────────────
   const [chatWith, setChatWith] = useState(null) // { userId, pseudo }
+
+  // ── Activité des comptes (admin du site) ────────────────
+  // Métadonnées uniquement : qui revient et quand. Aucun contenu privé,
+  // aucune IP (finalité limitée aux bannissements — cf. confidentialité).
+  const [activity, setActivity] = useState(null)
+  const [activityError, setActivityError] = useState('')
+
+  useEffect(() => {
+    if (!isAdmin) return
+    let cancelled = false
+    api('GET', '/auth/admin-users')
+      .then(rows => { if (!cancelled) setActivity(rows) })
+      .catch(e => { if (!cancelled) setActivityError(e.message) })
+    return () => { cancelled = true }
+  }, [isAdmin])
+
+  const activityStats = useMemo(() => {
+    if (!activity) return null
+    const now = Date.now()
+    const since = days => activity.filter(u => {
+      if (!u.last_seen_at) return false
+      return now - new Date(u.last_seen_at).getTime() < days * 86400000
+    }).length
+    return { total: activity.length, day: since(1), week: since(7), month: since(30) }
+  }, [activity])
 
   // ── Modérateurs ─────────────────────────────────────────
   const [modPseudo, setModPseudo] = useState('')
@@ -142,6 +168,42 @@ export default function AdminPanelModal({ social, isAdmin = false, showToast, as
         )}
 
         {isAdmin && (<>
+        <h4 className="profile-section-title">📊 Activité des comptes</h4>
+        {activityError && <p className="tmdb-hint" style={{ marginTop: 0 }}>Erreur : {activityError}</p>}
+        {!activity && !activityError && <p className="tmdb-hint" style={{ marginTop: 0 }}>Chargement...</p>}
+        {activityStats && (
+          <>
+            <div className="admin-stats-row">
+              <div className="admin-stat"><b>{activityStats.total}</b><small>comptes</small></div>
+              <div className="admin-stat"><b>{activityStats.day}</b><small>actifs 24 h</small></div>
+              <div className="admin-stat"><b>{activityStats.week}</b><small>actifs 7 j</small></div>
+              <div className="admin-stat"><b>{activityStats.month}</b><small>actifs 30 j</small></div>
+            </div>
+            <div className="admin-users-table">
+              {activity.map(entry => (
+                <div className="admin-user-row" key={entry.id}>
+                  <div className="admin-user-name">
+                    <b>{entry.pseudo}</b>
+                    {entry.banned && <span className="chip chip-danger">Banni</span>}
+                    {!entry.banned && entry.blocked && <span className="chip chip-danger">Bloqué</span>}
+                    <small>
+                      Inscrit le {formatDate(entry.created_at)}
+                      {typeof entry.room_count === 'number' ? ` · ${entry.room_count} room${entry.room_count > 1 ? 's' : ''}` : ''}
+                    </small>
+                  </div>
+                  <div className="admin-user-seen">
+                    {entry.last_seen_at ? formatRelative(entry.last_seen_at) : 'jamais vu'}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="tmdb-hint">
+              Horodatage de dernière activité uniquement (déclaré dans la politique
+              de confidentialité). Aucun contenu privé n'est accessible ici.
+            </p>
+          </>
+        )}
+
         <h4 className="profile-section-title">⚔️ Modérateurs du site</h4>
         <p className="tmdb-hint" style={{ marginTop: 0, marginBottom: '10px' }}>
           Épée verte à côté du pseudo. Pouvoirs : supprimer n'importe quel message de discussion et n'importe quel avis.
