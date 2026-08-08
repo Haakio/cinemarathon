@@ -88,7 +88,7 @@ export default function Header({
           rel="noopener noreferrer"
           title="Soutenir le site sur Ko-fi"
         >
-          ☕ Faire un don
+          ☕ <span className="kofi-label">Faire un don</span>
         </a>
         {isSiteAdmin && (
           <button className="panel-btn" onClick={onOpenAdminPanel} title="Panel Modération">
