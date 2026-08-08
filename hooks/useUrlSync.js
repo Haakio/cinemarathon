@@ -10,37 +10,43 @@ function buildPath(roomSlug, view) {
 }
 
 /**
- * Synchronise l'URL avec la room + vue courantes : liens partageables, et un
- * F5 revient exactement là où on était (au lieu de retomber sur la Vue
- * d'ensemble). L'URL est TOUJOURS dérivée de l'état (source de vérité) — on
- * ne la LIT qu'au chargement initial (deep-link) et à la navigation
- * précédent/suivant du navigateur, jamais en continu.
+ * Synchronise l'URL avec la room + vue courantes : liens partageables, F5 qui
+ * revient exactement là où on était, et bouton précédent/suivant du navigateur
+ * qui rejoue bien les vues internes.
  *
- * Volontairement `router.replace` (pas `push`) : évite d'empiler une entrée
- * d'historique à chaque clic dans la sidebar — précédent/suivant ne "rejoue"
- * donc pas les vues internes, mais le lien partageable et la persistance au
- * F5 (ce qui a été demandé) fonctionnent.
+ * L'URL est TOUJOURS dérivée de l'état (source de vérité) ; on ne la LIT qu'au
+ * chargement (deep-link) et sur précédent/suivant, jamais en continu.
+ *
+ * `push` vs `replace` : une navigation VOULUE par l'utilisateur (clic dans la
+ * sidebar, changement de room) fait un `push` — sans quoi le bouton retour
+ * saute par-dessus toute la navigation interne et renvoie à la dernière page
+ * réellement visitée. En revanche, une simple CORRECTION d'URL (normalisation
+ * de "/" vers la room restaurée, slug de vue inconnu, vue indisponible dans
+ * cette room) se fait en `replace` : sinon le retour retomberait sur l'URL
+ * fautive, qui se corrigerait à nouveau — et l'utilisateur serait piégé.
  */
-export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView }) {
+export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView, isViewAllowed }) {
   const router = useRouter()
   // État (pas une ref) : doit se mettre à jour dans le MÊME commit que
   // setView/onSelectRoom ci-dessous (React 18 batche les deux), sinon
   // l'effet d'écriture d'URL repartirait avec l'ancienne valeur de `view`
-  // pendant un rendu transitoire et écraserait le deep-link avant qu'il
-  // n'ait eu le temps de s'appliquer.
+  // pendant un rendu transitoire et écraserait le deep-link.
   const [initialApplied, setInitialApplied] = useState(false)
-  const lastPushedRef = useRef(null)
+  // La toute première écriture normalise l'URL d'arrivée : jamais d'entrée
+  // d'historique pour ça. Repasse à true dès qu'on corrige une URL invalide.
+  const replaceNextRef = useRef(true)
 
   // URL → état (deep-link au chargement + navigation précédent/suivant)
   useEffect(() => {
     if (!authed || !router.isReady) return
-    if (router.asPath === lastPushedRef.current) return // c'est nous-mêmes qui venons de pousser cette URL
 
     const segments = Array.isArray(router.query.params) ? router.query.params : []
     const [roomSlug, viewSlug] = segments
 
     if (!roomSlug) {
-      // "/" nu : on ne touche à rien, useMarathon restaure déjà la room via localStorage
+      // "/" nu : useMarathon a déjà restauré la room via localStorage, on
+      // laisse l'effet d'écriture poser l'URL correspondante (en replace).
+      replaceNextRef.current = true
       setInitialApplied(true)
       return
     }
@@ -50,7 +56,18 @@ export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, set
     const room = rooms.find(r => r.slug === roomSlug || r.id === roomSlug)
     if (room && room.id !== currentRoom.id) onSelectRoom(room.id)
 
-    const targetView = VALID_VIEWS.has(viewSlug) ? viewSlug : VIEWS.OVERVIEW
+    // Vue inconnue, ou indisponible dans cette room (ex: calendrier retiré des
+    // rooms publiques) : on retombe sur la vue d'ensemble, et cette correction
+    // ne doit pas créer d'entrée d'historique.
+    const targetRoom = room || currentRoom
+    let targetView = VALID_VIEWS.has(viewSlug) ? viewSlug : VIEWS.OVERVIEW
+    if (targetView !== VIEWS.OVERVIEW && isViewAllowed && !isViewAllowed(targetView, targetRoom)) {
+      targetView = VIEWS.OVERVIEW
+    }
+    if (targetView !== viewSlug && !(targetView === VIEWS.OVERVIEW && !viewSlug)) {
+      replaceNextRef.current = true
+    }
+
     if (targetView !== view) setView(targetView)
 
     setInitialApplied(true)
@@ -60,9 +77,13 @@ export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, set
   useEffect(() => {
     if (!authed || !initialApplied) return
     const path = buildPath(currentRoom.slug || currentRoom.id, view)
-    if (path === router.asPath) return
-    lastPushedRef.current = path
-    router.replace(path, undefined, { shallow: true })
+    if (path === router.asPath) {
+      replaceNextRef.current = false // URL déjà juste : la prochaine écriture sera une vraie navigation
+      return
+    }
+    const navigate = replaceNextRef.current ? router.replace : router.push
+    replaceNextRef.current = false
+    navigate.call(router, path, undefined, { shallow: true })
   }, [authed, initialApplied, currentRoom.id, currentRoom.slug, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Exposé pour que la page retienne l'écran de chargement tant que le

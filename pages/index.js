@@ -383,7 +383,17 @@ export default function App() {
 
   // Liens partageables : URL synchronisée avec la room + vue courantes
   // (F5 revient au même endroit, deep-link direct vers /{room}/{vue}).
-  const { ready: urlSyncReady } = useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView })
+  // isViewAllowed : une URL pointant vers une vue indisponible dans cette room
+  // est corrigée en `replace`, pour ne pas piéger le bouton retour sur une
+  // adresse qui se re-corrigerait en boucle.
+  const isViewAllowed = useCallback((targetView, room) => {
+    const roomIsPublic = room.id === 'marvel' || room.is_private === false
+    if (targetView === VIEWS.CALENDRIER && roomIsPublic) return false
+    if (targetView === VIEWS.ADMIN) return false // droits vérifiés côté room, pas depuis une URL
+    return true
+  }, [])
+
+  const { ready: urlSyncReady } = useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView, isViewAllowed })
 
   async function deleteReview(id) {
     if (!(await askConfirm({ title: 'Supprimer cet avis', message: 'Cette note et ce commentaire seront définitivement supprimés.', confirmLabel: 'Supprimer', danger: true }))) return
