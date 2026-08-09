@@ -15,8 +15,12 @@ import { VIEWS } from '../utils/constants'
  *
  * @param {{authed: boolean, currentUser: object|null, view: string, pageVisible: boolean, membersWanted: boolean}} params
  */
-export function useMarathon({ authed, currentUser, view, pageVisible, membersWanted }) {
+export function useMarathon({ authed, currentUser, view, pageVisible, membersWanted, onSessionInvalid }) {
   const [rooms, setRooms] = useState([])
+  // Passe à true dès que le PREMIER chargement des rooms a abouti — succès
+  // OU échec. Sans ce drapeau, une erreur réseau laissait `rooms` vide
+  // indéfiniment et l'écran de chargement ne se levait jamais.
+  const [roomsLoaded, setRoomsLoaded] = useState(false)
   const [currentRoomId, setCurrentRoomId] = useState('marvel')
   const [watchlist, setWatchlist] = useState([])
   const [watched, setWatched] = useState([])
@@ -26,6 +30,10 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
   const lastDataLoadRef = useRef(0)
 
   const isAdmin = currentUser?.pseudo === process.env.NEXT_PUBLIC_ADMIN_PSEUDO
+
+  // Rappel de session invalide gardé dans une ref : voir loadRooms ci-dessous.
+  const onSessionInvalidRef = useRef(onSessionInvalid)
+  useEffect(() => { onSessionInvalidRef.current = onSessionInvalid })
 
   // Restauration de la room choisie
   useEffect(() => { setCurrentRoomId(getStoredRoom()) }, [])
@@ -39,7 +47,19 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
         setCurrentRoomId(data[0].id)
         saveStoredRoom(data[0].id)
       }
-    } catch { }
+    } catch (err) {
+      // 401 = jeton expiré ou invalide : mieux vaut renvoyer à l'écran de
+      // connexion que laisser une app vide et inutilisable.
+      if (err?.status === 401) onSessionInvalidRef.current?.()
+    } finally {
+      // Toujours, même en cas d'échec : l'app ne doit jamais rester bloquée
+      // sur l'écran de chargement en attendant des rooms qui n'arriveront pas.
+      setRoomsLoaded(true)
+    }
+    // onSessionInvalid volontairement HORS des dépendances (lu via une ref) :
+    // c'est une fonction recréée à chaque rendu du parent, et loadRooms est
+    // lui-même une dépendance de trois effets — l'y mettre relancerait les
+    // appels réseau en boucle.
   }, [authed, currentRoomId])
 
   const loadData = useCallback(async () => {
@@ -140,7 +160,7 @@ export function useMarathon({ authed, currentUser, view, pageVisible, membersWan
   }, [])
 
   return {
-    rooms, setRooms,
+    rooms, setRooms, roomsLoaded,
     currentRoomId, selectRoom,
     currentRoom, canDeleteCurrentRoom, canManageCurrentRoom, isAdmin,
     watchlist, watched, availability, roomMembers, setRoomMembers, loading,

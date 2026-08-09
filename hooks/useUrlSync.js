@@ -25,7 +25,7 @@ function buildPath(roomSlug, view) {
  * cette room) se fait en `replace` : sinon le retour retomberait sur l'URL
  * fautive, qui se corrigerait à nouveau — et l'utilisateur serait piégé.
  */
-export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView, isViewAllowed }) {
+export function useUrlSync({ authed, rooms, roomsLoaded, currentRoom, view, onSelectRoom, setView, isViewAllowed }) {
   const router = useRouter()
   // État (pas une ref) : doit se mettre à jour dans le MÊME commit que
   // setView/onSelectRoom ci-dessous (React 18 batche les deux), sinon
@@ -51,7 +51,11 @@ export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, set
       return
     }
 
-    if (!rooms.length) return // attend le chargement des rooms pour résoudre le slug
+    // On attend les rooms pour résoudre le slug — mais UNIQUEMENT tant que le
+    // premier chargement est en cours. S'il a échoué (jeton expiré, réseau),
+    // on continue quand même : sinon l'écran de chargement resterait affiché
+    // pour toujours et le site serait inaccessible.
+    if (!rooms.length && !roomsLoaded) return
 
     const room = rooms.find(r => r.slug === roomSlug || r.id === roomSlug)
     if (room && room.id !== currentRoom.id) onSelectRoom(room.id)
@@ -71,7 +75,7 @@ export function useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, set
     if (targetView !== view) setView(targetView)
 
     setInitialApplied(true)
-  }, [authed, router.isReady, router.asPath, rooms]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authed, router.isReady, router.asPath, rooms, roomsLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // État → URL (une fois le deep-link initial appliqué)
   useEffect(() => {

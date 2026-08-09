@@ -144,9 +144,10 @@ export default function App() {
   const marathon = useMarathon({
     authed, currentUser, view, pageVisible: isActive,
     membersWanted: roomPanelOpen || roomSettingsOpen || view === VIEWS.ADMIN || view === VIEWS.OVERVIEW,
+    onSessionInvalid: () => { logout(); showToast('Session expirée, reconnectez-vous.') },
   })
   const {
-    rooms, setRooms, currentRoomId, selectRoom, currentRoom,
+    rooms, setRooms, roomsLoaded, currentRoomId, selectRoom, currentRoom,
     canDeleteCurrentRoom, canManageCurrentRoom, isAdmin,
     watchlist, watched, availability, roomMembers, setRoomMembers,
     loadData, loadAvailability, reset,
@@ -393,7 +394,7 @@ export default function App() {
     return true
   }, [])
 
-  const { ready: urlSyncReady } = useUrlSync({ authed, rooms, currentRoom, view, onSelectRoom, setView, isViewAllowed })
+  const { ready: urlSyncReady } = useUrlSync({ authed, rooms, roomsLoaded, currentRoom, view, onSelectRoom, setView, isViewAllowed })
 
   async function deleteReview(id) {
     if (!(await askConfirm({ title: 'Supprimer cet avis', message: 'Cette note et ce commentaire seront définitivement supprimés.', confirmLabel: 'Supprimer', danger: true }))) return
