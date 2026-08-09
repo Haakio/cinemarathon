@@ -69,6 +69,14 @@ export async function api(method, path, body) {
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
     body: body ? JSON.stringify(body) : undefined,
   })
+  // Jeton glissant : le serveur renvoie un jeton frais quand celui en cours
+  // commence à dater (voir lib/auth.js). Tant que l'utilisateur revient, sa
+  // session se prolonge et il n'est jamais déconnecté par surprise.
+  const refreshed = res.headers.get('X-Refreshed-Token')
+  if (refreshed && typeof window !== 'undefined') {
+    localStorage.setItem('cm_token', refreshed)
+  }
+
   const data = await res.json()
   if (!res.ok) {
     // 451 = compte suspendu par la modération → l'app affiche l'écran bloqué

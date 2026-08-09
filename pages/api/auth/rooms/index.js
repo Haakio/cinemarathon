@@ -5,7 +5,7 @@ import {
   getRoomInvitesFor, getRoomInviteToken, getRoomMembers, getRooms, hasRoomAccess, hasRoomManageAccess,
   removeRoomMember, setRoomInviteToken, setRoomMemberRole, touchUserLastSeen, updateRoomCode, updateRoomGoal, updateRoomImage, updateRoomName,
 } from '../../../../lib/db'
-import { requireAuth } from '../../../../lib/auth'
+import { maybeRefreshToken, requireAuth } from '../../../../lib/auth'
 import { getClientIp, moderateOrBlock } from '../../../../lib/guard'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -41,6 +41,11 @@ export default async function handler(req, res) {
       // Heartbeat de présence + capture d'IP (pour le ban IP éventuel),
       // greffé sur le poll existant (aucun appel en plus)
       try { await touchUserLastSeen(user.id, getClientIp(req)) } catch { }
+
+      // Jeton glissant : c'est LE point de passage de tout utilisateur actif
+      // (au chargement de l'app puis toutes les 45 s), donc l'endroit idéal
+      // pour prolonger la session sans requête supplémentaire.
+      maybeRefreshToken(req, res)
 
       const rooms = await getRooms(user.id)
       return res.status(200).json(rooms)
