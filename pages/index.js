@@ -40,6 +40,7 @@ import RoomsHubModal from '../components/modals/RoomsHubModal'
 import InviteModal from '../components/modals/InviteModal'
 import WelcomeModal from '../components/modals/WelcomeModal'
 import DiscordModal from '../components/modals/DiscordModal'
+import ApologyModal from '../components/modals/ApologyModal'
 import ConfirmModal from '../components/modals/ConfirmModal'
 import ProfileModal from '../components/modals/ProfileModal'
 import ChatConsentModal from '../components/modals/ChatConsentModal'
@@ -90,6 +91,7 @@ export default function App() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [discordOpen, setDiscordOpen] = useState(false)
+  const [apologyOpen, setApologyOpen] = useState(false)
   const [adminPanelOpen, setAdminPanelOpen] = useState(false)
   const [roomPanelOpen, setRoomPanelOpen] = useState(false)
   const [roomPanelMode, setRoomPanelMode] = useState('join')
@@ -267,6 +269,20 @@ export default function App() {
     setDiscordOpen(false)
   }
 
+  // Mot d'excuse (incidents du 8 au 10 août) : une seule fois, et seulement
+  // pour les comptes qui existaient déjà — onAuthed pose le flag « déjà vu »
+  // dès la création d'un compte, pour ne pas s'excuser auprès de quelqu'un
+  // qui n'a jamais subi les pannes.
+  useEffect(() => {
+    if (!authed || !currentUser?.id) return
+    if (localStorage.getItem(`cm_apology_${currentUser.id}`) !== '1') setApologyOpen(true)
+  }, [authed, currentUser])
+
+  function closeApology() {
+    if (currentUser?.id) localStorage.setItem(`cm_apology_${currentUser.id}`, '1')
+    setApologyOpen(false)
+  }
+
   // Garde d'accès admin (comportement conservé)
   useEffect(() => {
     if (view === VIEWS.ADMIN && !canManageCurrentRoom) setView(VIEWS.LISTE)
@@ -296,8 +312,15 @@ export default function App() {
   const deleteGoal = useCallback(() => saveGoal(null), [saveGoal])
 
   // ── Actions ─────────────────────────────────────────────
-  function onAuthed(token, user) {
+  function onAuthed(token, user, isNewAccount = false) {
     saveSession(token, user)
+    // Nouveau compte : il n'a subi aucune des pannes, et l'invitation Discord
+    // est déjà dans le mot de bienvenue. On marque ces deux popups comme vues
+    // pour ne pas l'accueillir avec une pile de fenêtres.
+    if (isNewAccount && user?.id) {
+      localStorage.setItem(`cm_apology_${user.id}`, '1')
+      localStorage.setItem(`cm_discord_${user.id}`, '1')
+    }
     setCurrentUser(user)
     setAuthed(true)
   }
@@ -960,6 +983,10 @@ export default function App() {
           onLogout={logout}
         />
       )}
+      {/* File d'accueil : UNE popup à la fois, dans cet ordre —
+          bienvenue (Discord inclus) → excuses → annonce Discord → chat.
+          Chacune attend que les précédentes soient fermées : on ne saute
+          plus dessus avec trois fenêtres empilées à l'arrivée. */}
       {welcomeOpen && (
         <WelcomeModal
           adminPseudo={process.env.NEXT_PUBLIC_ADMIN_PSEUDO || 'Haakio'}
@@ -967,9 +994,8 @@ export default function App() {
           onClose={closeWelcome}
         />
       )}
-      {/* L'annonce Discord attend que le mot de bienvenue soit fermé
-          (nouveaux inscrits : pas deux popups empilées) */}
-      {discordOpen && !welcomeOpen && <DiscordModal onClose={closeDiscord} />}
+      {apologyOpen && !welcomeOpen && <ApologyModal onClose={closeApology} />}
+      {discordOpen && !welcomeOpen && !apologyOpen && <DiscordModal onClose={closeDiscord} />}
       {adminPanelOpen && (
         <AdminPanelModal
           social={social}
@@ -980,7 +1006,9 @@ export default function App() {
           onClose={() => setAdminPanelOpen(false)}
         />
       )}
-      {chat.chatPromptVisible && !welcomeOpen && <ChatConsentModal onChoose={chat.setChatPreference} />}
+      {chat.chatPromptVisible && !welcomeOpen && !apologyOpen && !discordOpen && (
+        <ChatConsentModal onChoose={chat.setChatPreference} />
+      )}
 
       {/* Widgets flottants */}
       <ChatWidget chat={chat} currentRoom={currentRoom} currentUser={currentUser} avatarMap={social.avatarMap} />

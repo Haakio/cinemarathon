@@ -40,7 +40,9 @@ export default function AuthScreen({ onAuthed }) {
       })
       const json = await res.json()
       if (!res.ok) { setError(json.error); setLoading(false); return }
-      onAuthed(json.token, json.user)
+      // 3e argument : compte tout juste créé — le parent s'en sert pour ne
+      // pas lui montrer les popups qui ne le concernent pas.
+      onAuthed(json.token, json.user, tab === 'register')
     } catch {
       setError('Erreur de connexion')
     }
