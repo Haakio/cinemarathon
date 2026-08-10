@@ -390,9 +390,19 @@ export default function App() {
   const isViewAllowed = useCallback((targetView, room) => {
     const roomIsPublic = room.id === 'marvel' || room.is_private === false
     if (targetView === VIEWS.CALENDRIER && roomIsPublic) return false
-    if (targetView === VIEWS.ADMIN) return false // droits vérifiés côté room, pas depuis une URL
+    if (targetView === VIEWS.ADMIN) {
+      // Mêmes droits que canManageCurrentRoom (useMarathon), appliqués à la
+      // room CIBLE. Surtout pas un refus systématique : la vue serait alors
+      // renvoyée vers la Vue d'ensemble juste après le clic sur le menu, et
+      // le propriétaire de la room ne pourrait jamais y entrer.
+      const canDelete = room.id !== 'marvel' &&
+        (room.can_delete || room.created_by === currentUser?.id || isAdmin)
+      return room.id === 'marvel'
+        ? (isAdmin || Boolean(room.can_manage))
+        : Boolean(room.can_manage || canDelete || isAdmin)
+    }
     return true
-  }, [])
+  }, [currentUser?.id, isAdmin])
 
   const { ready: urlSyncReady } = useUrlSync({ authed, rooms, roomsLoaded, currentRoom, view, onSelectRoom, setView, isViewAllowed })
 
