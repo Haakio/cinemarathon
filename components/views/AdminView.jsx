@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../utils/api'
 import { TYPE_META } from '../../utils/constants'
+import Icon from '../widgets/Icon'
 
 const EMPTY_FORM = {
   title: '', type: 'film', poster: '', year: '', platform: '', watchUrl: '',
@@ -19,6 +20,7 @@ export default function AdminView({
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [msg, setMsg] = useState('')
+  const [listSearch, setListSearch] = useState('')
 
   // (Réinit mdp et suppression de compte ont migré dans le Panel Modération)
 
@@ -154,6 +156,11 @@ export default function AdminView({
     } catch { }
   }
 
+  const filteredWatchlist = useMemo(() => {
+    const q = listSearch.trim().toLowerCase()
+    return q ? watchlist.filter(item => item.title.toLowerCase().includes(q)) : watchlist
+  }, [watchlist, listSearch])
+
   async function setRoomAdmin(member, makeAdmin) {
     // Rooms privées : le créateur. Marvel : l'admin du site.
     if (!(canDeleteCurrentRoom || isGlobalAdmin) || member.user_id === currentRoom.created_by) return
@@ -267,13 +274,24 @@ export default function AdminView({
         </div>
 
         <div className="card anim-up-2">
-          <h2>Liste actuelle ({watchlist.length})</h2>
+          <div className="card-title-row">
+            <h2>Liste actuelle ({listSearch.trim() ? `${filteredWatchlist.length}/${watchlist.length}` : watchlist.length})</h2>
+            {watchlist.length > 0 && (
+              <div className="apx-search">
+                <Icon name="search" size={13} />
+                <input value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Rechercher un titre..." />
+              </div>
+            )}
+          </div>
           {watchlist.length === 0 ? (
             <div className="admin-empty">Aucun titre pour le moment</div>
+          ) : filteredWatchlist.length === 0 ? (
+            <div className="admin-empty">Aucun titre ne correspond à « {listSearch.trim()} ».</div>
           ) : (
             <div className="admin-list">
-              {watchlist.map((item, idx) => {
+              {filteredWatchlist.map(item => {
                 const meta = TYPE_META[item.type] || TYPE_META.film
+                const idx = watchlist.indexOf(item)
                 return (
                   <div key={item.id} className="admin-item">
                     <span className="admin-item-num">{item.order}</span>
