@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../utils/api'
 import { TOP_SIZES } from '../../utils/constants'
+import PickTitleModal from '../modals/PickTitleModal'
 
 /**
  * "Mon Top" — classement perso (top 3/5/10/15) parmi les titres de la room
@@ -13,6 +14,7 @@ export default function TopView({ currentRoom, currentRoomId, watchlist, showToa
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [pickerIndex, setPickerIndex] = useState(null) // rang en cours de choix, ou null
 
   useEffect(() => {
     let cancelled = false
@@ -123,18 +125,14 @@ export default function TopView({ currentRoom, currentRoomId, watchlist, showToa
                   <div className="top-title">
                     {item ? `${item.title}${item.year ? ` (${item.year})` : ''}` : 'Choisissez un titre'}
                   </div>
-                  <select
-                    className="top-select"
-                    value={itemId || ''}
-                    onChange={e => setSlot(index, e.target.value || null)}
-                    aria-label={`Titre au rang ${index + 1}`}
+                  <button
+                    type="button"
+                    className="top-pick-btn"
+                    onClick={() => setPickerIndex(index)}
+                    aria-label={`Choisir le titre au rang ${index + 1}`}
                   >
-                    <option value="">— Vide —</option>
-                    {item && <option value={item.id}>{item.title}</option>}
-                    {available.map(opt => (
-                      <option key={opt.id} value={opt.id}>{opt.title}</option>
-                    ))}
-                  </select>
+                    {item ? 'Changer' : 'Choisir un titre'}
+                  </button>
                   {item && (
                     <div className="top-actions">
                       <button className="icon-btn" disabled={index === 0} onClick={() => move(index, -1)} title="Monter">↑</button>
@@ -151,6 +149,14 @@ export default function TopView({ currentRoom, currentRoomId, watchlist, showToa
             {saving ? 'Enregistrement...' : 'Enregistrer mon top'}
           </button>
         </>
+      )}
+
+      {pickerIndex !== null && (
+        <PickTitleModal
+          items={available}
+          onSelect={itemId => { setSlot(pickerIndex, itemId); setPickerIndex(null) }}
+          onClose={() => setPickerIndex(null)}
+        />
       )}
     </>
   )
