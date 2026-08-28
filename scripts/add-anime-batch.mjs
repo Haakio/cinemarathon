@@ -144,6 +144,7 @@ async function main() {
             backdrop: d.backdrop || '',
             cast: d.cast || [],
             releaseDate: d.releaseDate || '',
+            trailerKey: d.trailerKey || '',
           }
         } else {
           results.noMatch.push(title)

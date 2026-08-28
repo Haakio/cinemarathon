@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
-    const { dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast, releaseDate } = req.body
+    const { dir, title, type, poster, year, platform, watchUrl, synopsis, runtime, genres, tmdbId, backdrop, cast, releaseDate, trailerKey } = req.body
     const roomId = realRoomId
 
     try {
@@ -58,6 +58,7 @@ export default async function handler(req, res) {
           backdrop: backdrop || '',
           castJson: Array.isArray(cast) ? JSON.stringify(cast.slice(0, 10)) : '[]',
           releaseDate: releaseDate || '',
+          trailerKey: trailerKey || '',
         })
 
         return res.status(200).json({ ok: true })

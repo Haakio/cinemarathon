@@ -5,7 +5,22 @@ import Icon from '../widgets/Icon'
 
 const EMPTY_FORM = {
   title: '', type: 'film', poster: '', year: '', platform: '', watchUrl: '',
-  synopsis: '', runtime: 0, genres: '', tmdbId: '', backdrop: '', cast: [], releaseDate: '',
+  synopsis: '', runtime: 0, genres: '', tmdbId: '', backdrop: '', cast: [], releaseDate: '', trailerKey: '',
+}
+
+/** Accepte une URL YouTube (watch/youtu.be/embed) ou déjà un ID brut, renvoie l'ID de la vidéo. */
+function parseYoutubeKey(value) {
+  const v = (value || '').trim()
+  if (!v) return ''
+  if (/^[\w-]{11}$/.test(v)) return v
+  try {
+    const url = new URL(v)
+    if (url.hostname.includes('youtu.be')) return url.pathname.slice(1)
+    if (url.searchParams.get('v')) return url.searchParams.get('v')
+    const embedMatch = url.pathname.match(/\/embed\/([\w-]{11})/)
+    if (embedMatch) return embedMatch[1]
+  } catch { /* pas une URL valide, on garde tel quel */ }
+  return v
 }
 
 /**
@@ -86,6 +101,7 @@ export default function AdminView({
         backdrop: d.backdrop,
         cast: d.cast,
         releaseDate: d.releaseDate || '',
+        trailerKey: d.trailerKey || '',
       }))
       showToast('Fiche TMDB importée ✓')
     } catch (e) {
@@ -96,7 +112,7 @@ export default function AdminView({
   async function addItem() {
     if (!form.title.trim()) { setMsg('error:Entrez un titre.'); return }
     try {
-      await api('POST', '/auth/watchlist', { roomId: currentRoomId, ...form })
+      await api('POST', '/auth/watchlist', { roomId: currentRoomId, ...form, trailerKey: parseYoutubeKey(form.trailerKey) })
       setForm(EMPTY_FORM)
       setMsg('ok:Ajouté !')
       setTimeout(() => setMsg(''), 2500)
@@ -120,6 +136,7 @@ export default function AdminView({
       backdrop: item.backdrop || '',
       cast: (() => { try { return JSON.parse(item.cast_json || '[]') } catch { return [] } })(),
       releaseDate: item.release_date || '',
+      trailerKey: item.trailer_key || '',
     })
     setMsg('')
   }
@@ -133,7 +150,7 @@ export default function AdminView({
   async function saveEdit() {
     if (!form.title.trim()) { setMsg('error:Entrez un titre.'); return }
     try {
-      await api('PUT', `/auth/watchlist/${editingId}`, { roomId: currentRoomId, ...form })
+      await api('PUT', `/auth/watchlist/${editingId}`, { roomId: currentRoomId, ...form, trailerKey: parseYoutubeKey(form.trailerKey) })
       setMsg('ok:Modifié !')
       cancelEdit()
       loadData()
@@ -258,6 +275,11 @@ export default function AdminView({
             <label>Synopsis (optionnel)</label>
             <textarea className="admin-input" style={{ minHeight: '70px', resize: 'vertical' }}
               value={form.synopsis} onChange={e => setField('synopsis', e.target.value)} placeholder="Rempli automatiquement via TMDB..." />
+          </div>
+          <div className="admin-form-group">
+            <label>Bande-annonce (optionnel)</label>
+            <input className="admin-input" value={form.trailerKey} onChange={e => setField('trailerKey', e.target.value)}
+              placeholder="Rempli automatiquement via TMDB, ou collez un lien YouTube..." />
           </div>
 
           <button className="btn-add" onClick={editingId ? saveEdit : addItem}>

@@ -48,6 +48,7 @@ export default function MovieModal({
         backdrop: d.backdrop,
         cast: d.cast,
         releaseDate: d.releaseDate || '',
+        trailerKey: d.trailerKey || '',
       })
       showToast?.('Synopsis rempli via TMDB ✓')
       loadData?.()
@@ -125,6 +126,20 @@ export default function MovieModal({
             <button className="btn-add" style={{ width: 'auto' }} onClick={fillSynopsisFromTmdb} disabled={fillingSynopsis}>
               {fillingSynopsis ? 'Récupération...' : '🔎 Remplir le synopsis via TMDB'}
             </button>
+          </div>
+        )}
+
+        {item.trailer_key && (
+          <div className="movie-modal-section">
+            <h4>Bande-annonce</h4>
+            <div className="movie-modal-trailer">
+              <iframe
+                src={`https://www.youtube.com/embed/${item.trailer_key}`}
+                title={`Bande-annonce — ${item.title}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           </div>
         )}
 
