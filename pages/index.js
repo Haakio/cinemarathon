@@ -151,7 +151,7 @@ export default function App() {
   })
   const {
     rooms, setRooms, roomsLoaded, currentRoomId, selectRoom, currentRoom,
-    canDeleteCurrentRoom, canManageCurrentRoom, isAdmin,
+    canDeleteCurrentRoom, canManageCurrentRoom: canManageCurrentRoomBase, isAdmin,
     watchlist, watched, availability, roomMembers, setRoomMembers,
     loadData, loadAvailability, reset,
   } = marathon
@@ -237,6 +237,12 @@ export default function App() {
 
   // Staff = admin du site OU modérateur nommé (épée verte)
   const isStaff = isAdmin || Boolean(social.profile?.moderator)
+
+  // Éditeur nommé par l'admin : accès à l'onglet Administration (édition des
+  // films) dans TOUTES ses rooms d'un coup, jamais à celles où il n'est pas
+  // membre — canManageCurrentRoomBase reste déjà borné aux rooms de `rooms`.
+  const isEditor = isAdmin || Boolean(social.profile?.editor)
+  const canManageCurrentRoom = canManageCurrentRoomBase || isEditor
 
   // Compte suspendu par la modération : écran bloquant immédiat
   // (déclenché par une réponse 451, confirmé par le profil serveur)
@@ -422,11 +428,11 @@ export default function App() {
       const canDelete = room.id !== 'marvel' &&
         (room.can_delete || room.created_by === currentUser?.id || isAdmin)
       return room.id === 'marvel'
-        ? (isAdmin || Boolean(room.can_manage))
-        : Boolean(room.can_manage || canDelete || isAdmin)
+        ? (isAdmin || isEditor || Boolean(room.can_manage))
+        : Boolean(room.can_manage || canDelete || isAdmin || isEditor)
     }
     return true
-  }, [currentUser?.id, isAdmin])
+  }, [currentUser?.id, isAdmin, isEditor])
 
   const { ready: urlSyncReady } = useUrlSync({ authed, rooms, roomsLoaded, currentRoom, view, onSelectRoom, setView, isViewAllowed })
 

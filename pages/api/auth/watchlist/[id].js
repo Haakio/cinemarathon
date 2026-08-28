@@ -1,11 +1,15 @@
-import { deleteWatchlistItem, getWatchlist, getWatchlistItemRoomId, hasRoomAccess, hasRoomManageAccess, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
+import { deleteWatchlistItem, getUserById, getWatchlist, getWatchlistItemRoomId, hasRoomAccess, hasRoomManageAccess, updateWatchlistOrder, updateWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function isValidWatchUrl(url) { return !url || /^https?:\/\//i.test(url) }
 
+// L'appelant a déjà vérifié hasRoomAccess (membre de la room) avant canManage :
+// un éditeur nommé par l'admin agit donc uniquement dans ses propres rooms.
 async function canManage(roomId, user) {
   const isGlobalAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
-  return isGlobalAdmin || await hasRoomManageAccess(roomId, user.id)
+  if (isGlobalAdmin || await hasRoomManageAccess(roomId, user.id)) return true
+  const me = await getUserById(user.id)
+  return Boolean(me?.editor)
 }
 
 export default async function handler(req, res) {

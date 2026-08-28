@@ -159,6 +159,7 @@ export default async function handler(req, res) {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned INTEGER DEFAULT 0`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT DEFAULT ''`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS moderator INTEGER DEFAULT 0`
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS editor INTEGER DEFAULT 0`
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS hide_ratings_public BOOLEAN DEFAULT false`
     await sql`
       CREATE TABLE IF NOT EXISTS rating_visibility (

@@ -30,6 +30,7 @@ export default async function handler(req, res) {
         blocked: Boolean(me.blocked_at),
         banned: Boolean(me.banned),
         moderator: Boolean(me.moderator),
+        editor: Boolean(me.editor),
       })
     }
 

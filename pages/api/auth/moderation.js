@@ -1,4 +1,4 @@
-import { addBannedIp, banUser, getModerationList, getUser, getUserById, removeBannedIpsFor, setUserModerator, unblockUser } from '../../../lib/db'
+import { addBannedIp, banUser, getModerationList, getUser, getUserById, removeBannedIpsFor, setUserEditor, setUserModerator, unblockUser } from '../../../lib/db'
 import { requireAuth } from '../../../lib/auth'
 
 /**
@@ -8,7 +8,8 @@ import { requireAuth } from '../../../lib/auth'
  * POST { action: 'unblock', userId }            → débloquer (admin + modos)
  * POST { action: 'ban', userId, banIp: bool }   → bannir (ADMIN uniquement)
  * POST { action: 'unban', userId }              → débannir (ADMIN uniquement)
- * POST { action: 'mod'|'unmod', pseudo }        → nommer/révoquer (ADMIN uniquement)
+ * POST { action: 'mod'|'unmod', pseudo }        → nommer/révoquer modérateur (ADMIN uniquement)
+ * POST { action: 'editor'|'uneditor', pseudo }  → nommer/révoquer éditeur (ADMIN uniquement)
  */
 export default async function handler(req, res) {
   const user = requireAuth(req)
@@ -57,6 +58,16 @@ export default async function handler(req, res) {
         if (!target) return res.status(404).json({ error: 'Aucun compte avec ce pseudo' })
         await setUserModerator(target.id, action === 'mod')
         return res.status(200).json({ ok: true, pseudo: target.pseudo, moderator: action === 'mod' })
+      }
+
+      // Nomination / révocation d'un éditeur (accès administration de ses rooms)
+      if (action === 'editor' || action === 'uneditor') {
+        if (!isAdmin) return res.status(403).json({ error: 'Réservé à l\'administrateur du site' })
+        if (!pseudo?.trim()) return res.status(400).json({ error: 'Pseudo requis' })
+        const target = await getUser(pseudo.trim())
+        if (!target) return res.status(404).json({ error: 'Aucun compte avec ce pseudo' })
+        await setUserEditor(target.id, action === 'editor')
+        return res.status(200).json({ ok: true, pseudo: target.pseudo, editor: action === 'editor' })
       }
 
       if (!userId) return res.status(400).json({ error: 'Utilisateur requis' })

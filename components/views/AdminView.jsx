@@ -36,6 +36,8 @@ export default function AdminView({
   const [editingId, setEditingId] = useState(null)
   const [msg, setMsg] = useState('')
   const [listSearch, setListSearch] = useState('')
+  const [bulkTrailerLoading, setBulkTrailerLoading] = useState(false)
+  const [bulkTrailerStatus, setBulkTrailerStatus] = useState('')
 
   // (Réinit mdp et suppression de compte ont migré dans le Panel Modération)
 
@@ -107,6 +109,64 @@ export default function AdminView({
     } catch (e) {
       showToast('TMDB: ' + e.message)
     }
+  }
+
+  /**
+   * Récupère en une fois les bandes-annonces manquantes de toute la liste :
+   * réutilise le tmdb_id déjà connu, ou recherche par titre sinon, avec une
+   * petite pause entre chaque appel pour rester raisonnable côté TMDB.
+   */
+  async function fillMissingTrailers() {
+    const targets = watchlist.filter(item => !item.trailer_key)
+    if (!targets.length) { showToast('Toutes les fiches ont déjà une bande-annonce.'); return }
+
+    setBulkTrailerLoading(true)
+    let found = 0
+    for (let i = 0; i < targets.length; i++) {
+      const item = targets[i]
+      setBulkTrailerStatus(`Récupération ${i + 1}/${targets.length}...`)
+      try {
+        let mediaType = item.type === 'film' ? 'movie' : 'tv'
+        let tmdbId = item.tmdb_id || ''
+
+        if (!tmdbId) {
+          const { results } = await api('GET', `/auth/tmdb?query=${encodeURIComponent(item.title)}`)
+          const best = results?.find(r => r.mediaType === mediaType) || results?.[0]
+          if (best) { mediaType = best.mediaType; tmdbId = best.tmdbId }
+        }
+
+        if (tmdbId) {
+          const { details: d } = await api('GET', `/auth/tmdb?mediaType=${mediaType}&tmdbId=${tmdbId}`)
+          let cast = d.cast
+          try { const existing = JSON.parse(item.cast_json || '[]'); if (Array.isArray(existing) && existing.length) cast = existing } catch { /* garde d.cast */ }
+
+          await api('PUT', `/auth/watchlist/${item.id}`, {
+            roomId: currentRoomId,
+            title: item.title,
+            type: item.type,
+            poster: item.poster || d.poster,
+            year: item.year || d.year,
+            platform: item.platform || '',
+            watchUrl: item.watch_url || '',
+            synopsis: item.synopsis || d.synopsis,
+            runtime: item.runtime || d.runtime,
+            genres: item.genres || d.genres,
+            tmdbId: String(d.tmdbId),
+            backdrop: item.backdrop || d.backdrop,
+            cast,
+            releaseDate: item.release_date || d.releaseDate || '',
+            trailerKey: d.trailerKey || '',
+          })
+          if (d.trailerKey) found++
+        }
+      } catch { /* on ignore l'échec d'un titre et on continue les autres */ }
+      await new Promise(r => setTimeout(r, 250))
+    }
+
+    setBulkTrailerLoading(false)
+    setBulkTrailerStatus('')
+    showToast(`${found}/${targets.length} bande(s)-annonce(s) récupérée(s).`)
+    loadData()
   }
 
   async function addItem() {
@@ -298,12 +358,20 @@ export default function AdminView({
         <div className="card anim-up-2">
           <div className="card-title-row">
             <h2>Liste actuelle ({listSearch.trim() ? `${filteredWatchlist.length}/${watchlist.length}` : watchlist.length})</h2>
-            {watchlist.length > 0 && (
-              <div className="apx-search">
-                <Icon name="search" size={13} />
-                <input value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Rechercher un titre..." />
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {watchlist.some(i => !i.trailer_key) && (
+                <button className="btn-add" style={{ width: 'auto', marginTop: 0, fontSize: '12px', padding: '8px 12px' }}
+                  onClick={fillMissingTrailers} disabled={bulkTrailerLoading}>
+                  {bulkTrailerLoading ? bulkTrailerStatus : '🎬 Récupérer les bandes-annonces manquantes'}
+                </button>
+              )}
+              {watchlist.length > 0 && (
+                <div className="apx-search">
+                  <Icon name="search" size={13} />
+                  <input value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Rechercher un titre..." />
+                </div>
+              )}
+            </div>
           </div>
           {watchlist.length === 0 ? (
             <div className="admin-empty">Aucun titre pour le moment</div>

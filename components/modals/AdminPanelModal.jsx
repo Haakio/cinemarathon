@@ -104,6 +104,17 @@ export default function AdminPanelModal({ social, isAdmin = false, showToast, as
     setBusy(false)
   }
 
+  async function toggleEditor(pseudo, makeEditor) {
+    setBusy(true)
+    try {
+      await api('POST', '/auth/moderation', { action: makeEditor ? 'editor' : 'uneditor', pseudo })
+      showToast(makeEditor ? `🖊️ ${pseudo} est maintenant éditeur !` : 'Rôle éditeur retiré.')
+      social.reload()
+      await loadActivity()
+    } catch (e) { showToast(e.message) }
+    setBusy(false)
+  }
+
   async function generateResetCode(pseudo) {
     setBusy(true)
     setResetResult(null)
@@ -309,6 +320,9 @@ export default function AdminPanelModal({ social, isAdmin = false, showToast, as
                         <button className="apx-btn" disabled={busy} onClick={() => toggleModerator(selected.pseudo, !selected.moderator)}>
                           <Icon name="sword" size={14} /> {selected.moderator ? "Retirer l'épée" : 'Nommer modérateur'}
                         </button>
+                        <button className="apx-btn" disabled={busy} onClick={() => toggleEditor(selected.pseudo, !selected.editor)}>
+                          <Icon name="pen" size={14} /> {selected.editor ? "Retirer l'accès éditeur" : 'Nommer éditeur'}
+                        </button>
 
                         {resetResult && (
                           <div className="apx-code">
@@ -407,6 +421,41 @@ export default function AdminPanelModal({ social, isAdmin = false, showToast, as
                 <p className="apx-note">
                   Les modérateurs portent l'épée verte. Pouvoirs : supprimer n'importe quel
                   message de discussion et n'importe quel avis.
+                </p>
+              </div>
+            )}
+
+            {/* ── ÉDITEURS ───────────────────────────────── */}
+            {section === 'staff' && isAdmin && (
+              <div className="apx-card apx-pane">
+                <div className="apx-pane-head">
+                  <span>Éditeurs du site</span>
+                </div>
+                {activity?.some(u => u.editor) ? (
+                  <div className="apx-list">
+                    {activity.filter(u => u.editor).map(ed => (
+                      <div className="apx-row static" key={ed.id}>
+                        <span className="apx-dot online" />
+                        <span className="apx-row-name">
+                          {ed.pseudo}
+                          <span className="apx-tag mod"><Icon name="pen" size={9} strokeWidth={2.5} /></span>
+                        </span>
+                        <button className="apx-btn mini" disabled={busy} onClick={() => toggleEditor(ed.pseudo, false)}>
+                          Retirer
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="apx-empty tall">
+                    <Icon name="pen" size={26} />
+                    <p>Aucun éditeur nommé. Nommez-en depuis la section Membres.</p>
+                  </div>
+                )}
+                <p className="apx-note">
+                  Les éditeurs peuvent ouvrir l'onglet Administration et gérer les films (ajout,
+                  édition, suppression) dans toutes les rooms dont ils sont déjà membres — jamais
+                  dans une room à laquelle ils n'ont pas été invités, ni les avis/messages/membres.
                 </p>
               </div>
             )}

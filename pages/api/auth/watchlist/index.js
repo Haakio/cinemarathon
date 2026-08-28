@@ -1,4 +1,4 @@
-import { getWatchlist, hasRoomAccess, hasRoomManageAccess, insertWatchlistItem } from '../../../../lib/db'
+import { getUserById, getWatchlist, hasRoomAccess, hasRoomManageAccess, insertWatchlistItem } from '../../../../lib/db'
 import { requireAuth } from '../../../../lib/auth'
 
 function uid() { return Math.random().toString(36).substr(2, 12) }
@@ -27,7 +27,10 @@ export default async function handler(req, res) {
     try {
       if (!await hasRoomAccess(roomId, user.id)) return res.status(403).json({ error: 'Room privee' })
       const isGlobalAdmin = user.pseudo === (process.env.ADMIN_PSEUDO || process.env.NEXT_PUBLIC_ADMIN_PSEUDO)
-      if (!isGlobalAdmin && !await hasRoomManageAccess(roomId, user.id)) return res.status(403).json({ error: 'Interdit' })
+      if (!isGlobalAdmin && !await hasRoomManageAccess(roomId, user.id)) {
+        const me = await getUserById(user.id)
+        if (!me?.editor) return res.status(403).json({ error: 'Interdit' })
+      }
       const items = await getWatchlist(roomId)
       const item = {
         id: uid(),
