@@ -120,6 +120,16 @@ const PATHS = {
   ),
   // Mes notes (toutes rooms)
   star: <path d="M12 2.5l2.9 6.4 7 .7-5.3 4.7 1.6 6.9-6.2-3.7-6.2 3.7 1.6-6.9-5.3-4.7 7-.7L12 2.5z" />,
+  // Mon Top (coupe)
+  trophy: (
+    <>
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
+      <path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4" />
+      <path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4" />
+      <path d="M9 20h6" />
+      <path d="M12 15.5V20" />
+    </>
+  ),
   // Notifications (réserve)
   bell: (
     <>

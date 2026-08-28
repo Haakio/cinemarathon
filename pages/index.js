@@ -27,6 +27,7 @@ import CalendarView from '../components/views/CalendarView'
 import StatsView from '../components/views/StatsView'
 import LeaderboardView from '../components/views/LeaderboardView'
 import MyRatingsView from '../components/views/MyRatingsView'
+import TopView from '../components/views/TopView'
 import AdminView from '../components/views/AdminView'
 import DiscussionsView from '../components/views/DiscussionsView'
 import VoteView from '../components/views/VoteView'
@@ -850,6 +851,14 @@ export default function App() {
             )}
             {view === VIEWS.MES_NOTES && (
               <MyRatingsView showToast={showToast} />
+            )}
+            {view === VIEWS.TOP && (
+              <TopView
+                currentRoom={currentRoom}
+                currentRoomId={currentRoomId}
+                watchlist={watchlist}
+                showToast={showToast}
+              />
             )}
             {view === VIEWS.DISCUSSIONS && (
               <DiscussionsView

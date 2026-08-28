@@ -62,10 +62,14 @@ export const VIEWS = {
   CLASSEMENT: 'classement',
   DISCUSSIONS: 'discussions',
   MES_NOTES: 'mesnotes',
+  TOP: 'top',
   ADMIN: 'admin',
   MODERATION: 'moderation',
   PARAMETRES: 'parametres',
 }
+
+/** Tailles de top proposées ("Mon Top" — classement perso par room). */
+export const TOP_SIZES = [3, 5, 10, 15]
 
 /**
  * Configuration du tie-break "Jimmy" (vidéo fond vert).
