@@ -116,15 +116,19 @@ export default function MovieModal({
           </div>
         )}
 
-        {item.synopsis ? (
+        {item.synopsis && (
           <div className="movie-modal-section">
             <h4>Synopsis</h4>
             <p>{item.synopsis}</p>
           </div>
-        ) : canManage && (
+        )}
+
+        {canManage && (!item.synopsis || !item.trailer_key) && (
           <div className="movie-modal-section">
             <button className="btn-add" style={{ width: 'auto' }} onClick={fillSynopsisFromTmdb} disabled={fillingSynopsis}>
-              {fillingSynopsis ? 'Récupération...' : '🔎 Remplir le synopsis via TMDB'}
+              {fillingSynopsis
+                ? 'Récupération...'
+                : item.synopsis ? '🎬 Récupérer la bande-annonce via TMDB' : '🔎 Remplir la fiche via TMDB'}
             </button>
           </div>
         )}
